@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+*.log
+.env
+!.env.example
+backend/data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+coverage/
+.vite/
+.DS_Store
+Thumbs.db
