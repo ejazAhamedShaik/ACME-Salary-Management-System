@@ -11,5 +11,6 @@ backend/data/
 *.db-shm
 coverage/
 .vite/
+*.tsbuildinfo
 .DS_Store
 Thumbs.db
