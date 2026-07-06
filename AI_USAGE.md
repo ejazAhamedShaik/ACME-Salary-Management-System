@@ -49,3 +49,14 @@ Drizzle ORM 0.45.2, `@faker-js/faker` 10.5.0, etc.) were confirmed via `npm view
 rather than assumed, since several were newer majors than expected going in.
 
 > [human note: ] Generated the full project structure using Claude and set up was done for DB, BE, and FE. For DB local SQLite database is used and a seeding script was written to generate employees data of 10_000. Faker library was used to generate the data and was written to DB. React 19 latest build is being used and latest Ant Design 6 is configured to develop the UI screens. And for backend Express framework is chosen. 
+
+## Entry 2 — Initial project scaffold
+
+**What was asked:** Write an integration test for Seed.ts to test if it generates 10_000 records with unique employee IDs. 
+
+**What was generated:**
+- A test was written to test the DB seeding. 
+- A helper was written to create in-memory DB for testing purpose. Instead of actual dev DB this in-memory was used to make the tests efficient as using dev DB can slow down tests. 
+
+> [human note: ] Accepted the changes after reviewing. This is first test written to make sure DB is consistent with data seeded. 
+
