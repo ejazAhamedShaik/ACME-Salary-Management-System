@@ -48,4 +48,4 @@ sequence — a deliberate, scoped exception to the normal test-first workflow in
 Drizzle ORM 0.45.2, `@faker-js/faker` 10.5.0, etc.) were confirmed via `npm view`
 rather than assumed, since several were newer majors than expected going in.
 
-> [human note: ]
+> [human note: ] Generated the full project structure using Claude and set up was done for DB, BE, and FE. For DB local SQLite database is used and a seeding script was written to generate employees data of 10_000. Faker library was used to generate the data and was written to DB. React 19 latest build is being used and latest Ant Design 6 is configured to develop the UI screens. And for backend Express framework is chosen. 
