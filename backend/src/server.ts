@@ -5,6 +5,8 @@ import express from "express";
 import { createHealthController } from "./controllers/healthController.js";
 import { createHealthRouter } from "./routes/healthRoutes.js";
 import { createHealthService } from "./services/healthService.js";
+import { bootstrap } from "./db/bootstrap.js";
+import { db } from "./db/client.js";
 
 export function createApp() {
   const app = express();
@@ -24,6 +26,8 @@ const isEntryPoint =
   process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
 
 if (isEntryPoint) {
+  bootstrap(db);
+
   const port = Number(process.env.PORT ?? 3000);
   app.listen(port, () => {
     console.log(`Server listening on port ${port}`);
