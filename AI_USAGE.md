@@ -212,7 +212,13 @@ wasn't authorized. Confirmed: add the section, then proceed.
 
 > [human note: ] Implemented the search by employee code. But still the search is not working with employee code though we have data in DB. Debugging to fix the bug. 
 
-> [human note: ] Search by employee code is working fine, it was filing because of ambiguity in localhost port. 
+> [human note: ] Employee search with employee code is working fine. First it was failing with employee code (ex: EMP-000005) though service was giving 200 Ok. Data being returned was empty from service. 
+> Hypothesis 1: I have checked syntax in every the path of the service. Everything was fine and correct.  
+> Hypothesis 2: To verify the generated employeeCode format, checked drizzle studio and verified that employeeCode is in format of EMP-000005.
+> Checked different layers of the route including employeeRepository, employeeService, employeeController, and employeeRouter. Everything was perfectly fine and had not coding bugs. 
+> Verified the returned response through curl command and also through postman. There as well I was getting empty data results. This confirmed that issue is not in frontend. 
+> Checked on drizzle studio with the query to make employee search with employeeCode. It returned results as expected. 
+> Now, after debugging the bug in different layers of the application I have confirmed to myself that issue is not in the code. So I made an assumption that a stale `npm run dev` is still running from previous session and restarted the server. This fixed the issue. 
 
 ## Entry 6 — GET /employees/filters and filter dropdowns
 
@@ -279,4 +285,7 @@ document filters endpoint, derived-options decision, and AI usage`.
   `getByRole("option", { name: ... })` scoping instead.
 
 > [human note: ]
+> Service for department and countries was developed at /employees/filters route. 
+> Even though the seed data uses a fixed set of values, reason for deriving the list of departments and countries is to have the consistency between database and frontend view. It's because, if edit or delete happens and for any department or country employees and for that category if there is no data available then it'll be consistent between DB and frontend. This is why I am deriving these values fro DB. 
+> In frontend dropdowns were added for country and department filters and API integration is done to fetch the filter options and render the UI. 
 
