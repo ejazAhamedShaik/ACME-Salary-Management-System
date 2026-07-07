@@ -110,3 +110,36 @@ stronger consistency under concurrent writes and no `OFFSET`-scan cost at very
 large offsets, but it trades away a simple `total`/page-count-driven UI for an
 opaque-cursor API, complexity this dataset's size and near-zero write
 concurrency (see decision 4) doesn't justify.
+
+## 7. TanStack Query over hand-rolled `useState`/`useEffect` fetching
+
+**What we chose:** TanStack Query (`@tanstack/react-query`) for the employee
+list's data fetching, caching, and loading/error state, with
+`placeholderData: keepPreviousData` so the table keeps showing the current
+page's rows while a page change or a debounced search settles, instead of
+flashing blank.
+
+**Why:** The employee list page has a debounced search input whose value
+flows into the query — every keystroke that survives the debounce, and every
+page change, fires a new request while a previous one may still be in flight.
+A hand-rolled `useEffect` fetch needs manual request-cancellation/staleness
+tracking (e.g. an `AbortController` plus an "is this still the latest request"
+guard) to stop a slower, older response from overwriting a newer one — a real
+race-condition risk, not a hypothetical one, given how easily a user can
+change the search term again before the first request returns. TanStack
+Query's query keys (`["employees", { page, pageSize, search }]`) make each
+distinct request/parameter combination address its own cache entry
+automatically, so a stale response for an old key never clobbers state for
+the current one, without hand-written cancellation logic.
+
+**What we rejected:** Hand-rolled `useState`/`useEffect` fetching — viable for
+a single one-shot fetch, but the debounced-search-plus-pagination combination
+here is exactly the case where that approach's manual race-condition handling
+becomes real, easy-to-get-wrong code, not boilerplate avoidance.
+
+Related, smaller decision made in the same pass: the employee list `Table`'s
+built-in column sorting was deliberately left disabled. `GET /employees`
+doesn't accept a sort parameter yet, and enabling Ant Design's client-side
+sort would only reorder the current page's rows, not the full result set —
+misleading at pagination boundaries. Revisit once the backend supports a sort
+query parameter.

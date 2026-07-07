@@ -112,3 +112,66 @@ timed a deep-page, filtered request against the real 10,000-row seeded dev DB.
 
 > [human note: ] Implemented offset based pagination, written test cases to test GET /employees endpoint. Created employeesRepository helper to fetch the data from DB. Placed service and controller for /employees to format the data. 
 
+## Entry 4 — Employee list screen (GET /employees integration)
+
+**What was asked:** Build the frontend employee list screen against the
+existing `GET /employees` endpoint, using TanStack Query (not hand-rolled
+`useState`/`useEffect`) with `placeholderData: keepPreviousData`, a single
+`/` route structured for additive future routes, and space reserved in the
+layout for department/country filter dropdowns (not built this pass —
+`GET /employees/filters` doesn't exist yet). Debounced search (~300ms),
+antd `Table` wired directly to the API's pagination envelope, no client-side
+sorting (deferred pending backend sort support). Following TDD, split across
+6 labeled commits.
+
+**What was generated:**
+- `src/api/types.ts`, `src/api/employees.ts` (`fetchEmployees`), `src/api/queryClient.ts`
+  (module-level `QueryClient` singleton).
+- `src/hooks/useEmployees.ts` (wraps `useQuery`), `src/hooks/useDebouncedValue.ts`.
+- `src/components/EmployeeTable.tsx` (presentational, antd-agnostic props —
+  antd stays this file's private implementation detail).
+- `src/pages/EmployeeListPage.tsx` (owns page/search state, the debounce +
+  page-reset-on-search-change behavior, loading/empty/error/table states).
+- `App.tsx`/`main.tsx` wiring (`/` route swapped to the new page,
+  `QueryClientProvider` added at the root); the old `DirectoryPlaceholderPage`
+  placeholder deleted as dead code.
+- `frontend/tests/testUtils.tsx` (shared `renderWithProviders`/
+  `createTestQueryClient` helper), `frontend/tests/EmployeeListPage.test.tsx`
+  (7 scenarios), `frontend/tests/App.test.tsx` rewritten to match the new
+  route content.
+- Docs: README (TanStack Query dependency note), `ARCHITECTURE.md` (entry 7:
+  TanStack Query over hand-rolled fetching, plus a note on disabled
+  client-side sorting), this file.
+
+**Files touched:** see the 6 commits — `chore: add TanStack Query and wire
+QueryClientProvider`, `test: add failing tests for employee list loading,
+empty, and error states`, `feat: implement employee list page...`, `test: add
+failing tests for debounced search and page-change refetching`, `feat:
+implement debounced search input`, `docs: document TanStack Query decision...`.
+
+**Corrections to the task brief, based on reading the actual current code:**
+the brief said to add `react-router-dom`; this project already uses the
+modern unified `react-router` package (already installed, already wired), so
+no new routing dependency was added. Also, the brief didn't specify whether
+typing a new search term should reset the current page — flagged as a real
+product-behavior gap (a stale deep page combined with a narrower search could
+otherwise show an empty table indistinguishable from "no matches") and
+confirmed with the developer before building it in.
+
+**Process notes:**
+- A pre-existing test-isolation bug was found and fixed while writing these
+  tests: `@testing-library/react`'s automatic `afterEach(cleanup)` only
+  registers when it detects a *global* `afterEach`, but this project's
+  `vite.config.ts` sets `globals: false`, so cleanup between tests was
+  silently never happening. Fixed in the shared `tests/setup.ts`.
+- The debounce test needed `vi.useFakeTimers()` plus wrapping the timer
+  advance in `act()` — the debounce timeout's state update happens outside
+  any React event handler, so without `act()` the resulting re-render (and
+  the query-key change it triggers) doesn't flush before the assertion runs.
+- A `window.matchMedia` polyfill was added to the shared test setup — antd's
+  responsive grid hooks need it and jsdom doesn't implement it; this
+  surfaced as soon as the first real antd `Table`/`Flex` combination was
+  rendered in a test, not during the earlier placeholder-only smoke test.
+
+> [human note: ]
+

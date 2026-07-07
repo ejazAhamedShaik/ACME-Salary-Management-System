@@ -9,7 +9,9 @@ a spreadsheet-based workflow. See `REQUIREMENTS.md` for full scope and
 
 - **Backend:** Node.js + TypeScript + Express, SQLite via `better-sqlite3` +
   Drizzle ORM
-- **Frontend:** React + Vite + TypeScript, React Router, Ant Design v6
+- **Frontend:** React + Vite + TypeScript, React Router, Ant Design v6,
+  TanStack Query for server-state fetching/caching (see `ARCHITECTURE.md` for
+  why, over hand-rolled `useState`/`useEffect` fetching)
 - **Testing:** Vitest on both sides (backend also uses Supertest; frontend also
   uses React Testing Library + jest-dom)
 - **Package manager:** npm
