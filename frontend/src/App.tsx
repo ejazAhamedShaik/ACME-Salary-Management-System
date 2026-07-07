@@ -1,10 +1,10 @@
 import { Route, Routes } from "react-router";
-import { DirectoryPlaceholderPage } from "./pages/DirectoryPlaceholderPage";
+import { EmployeeListPage } from "./pages/EmployeeListPage";
 
 export function App() {
   return (
     <Routes>
-      <Route path="/" element={<DirectoryPlaceholderPage />} />
+      <Route path="/" element={<EmployeeListPage />} />
     </Routes>
   );
 }
