@@ -14,11 +14,10 @@ let nextEmployeeId = 1;
 function buildRows(count: number, overrides: RowOverrides) {
   return Array.from({ length: count }, (_, offset) => {
     const index = nextEmployeeId++;
-    const isLastInBucket = offset === count - 1;
 
     return {
       employeeCode: `EMP-${String(index).padStart(6, "0")}`,
-      name: isLastInBucket ? "Zephyr Unique" : `Employee ${index}`,
+      name: `Employee ${index}`,
       department: overrides.department,
       country: overrides.country,
       currencyCode: "USD",
@@ -37,6 +36,7 @@ describe("GET /employees", () => {
   const engineeringUS = buildRows(9, { department: "Engineering", country: "United States" });
   const salesCanada = buildRows(2, { department: "Sales", country: "Canada" });
   const salesUS = buildRows(11, { department: "Sales", country: "United States" });
+  engineeringUS[engineeringUS.length - 1].name = "Zephyr Unique";
   const fixture = [...engineeringCanada, ...engineeringUS, ...salesCanada, ...salesUS];
 
   beforeAll(() => {

@@ -6,6 +6,10 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { createHealthController } from "./controllers/healthController.js";
 import { createHealthRouter } from "./routes/healthRoutes.js";
 import { createHealthService } from "./services/healthService.js";
+import { createEmployeeController } from "./controllers/employeeController.js";
+import { createEmployeeRouter } from "./routes/employeeRoutes.js";
+import { createEmployeeService } from "./services/employeeService.js";
+import { createEmployeeRepository } from "./repositories/employeeRepository.js";
 import { bootstrap } from "./db/bootstrap.js";
 
 export function createApp(db: BetterSQLite3Database<Record<string, unknown>>) {
@@ -16,6 +20,11 @@ export function createApp(db: BetterSQLite3Database<Record<string, unknown>>) {
 
   const healthRouter = createHealthRouter(createHealthController(createHealthService()));
   app.use("/health", healthRouter);
+
+  const employeeRepository = createEmployeeRepository(db);
+  const employeeService = createEmployeeService(employeeRepository);
+  const employeeRouter = createEmployeeRouter(createEmployeeController(employeeService));
+  app.use("/employees", employeeRouter);
 
   return app;
 }
