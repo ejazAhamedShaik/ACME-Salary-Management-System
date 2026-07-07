@@ -210,5 +210,5 @@ exist yet (checked directly, no match) — flagged to the developer per
 silently assuming either that the doc was out of sync or that the change
 wasn't authorized. Confirmed: add the section, then proceed.
 
-> [human note: ]
+> [human note: ] Implemented the search by employee code. But still the search is not working with employee code though we have data in DB. Debugging to fix the bug. 
 
