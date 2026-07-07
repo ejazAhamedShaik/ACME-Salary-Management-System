@@ -1,15 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { EmployeeListPage } from "../src/pages/EmployeeListPage";
 import { renderWithProviders } from "./testUtils";
-import { fetchEmployees } from "../src/api/employees";
+import { fetchEmployeeFilters, fetchEmployees } from "../src/api/employees";
 
 vi.mock("../src/api/employees", () => ({
   fetchEmployees: vi.fn(),
+  fetchEmployeeFilters: vi.fn(),
 }));
 
 const fetchEmployeesMock = vi.mocked(fetchEmployees);
+const fetchEmployeeFiltersMock = vi.mocked(fetchEmployeeFilters);
 
 const mockEmployee = {
   id: 1,
@@ -25,6 +27,8 @@ const mockEmployee = {
 describe("EmployeeListPage", () => {
   beforeEach(() => {
     fetchEmployeesMock.mockClear();
+    fetchEmployeeFiltersMock.mockReset();
+    fetchEmployeeFiltersMock.mockResolvedValue({ departments: [], countries: [] });
   });
 
   it("renders a loading state before data resolves", async () => {
@@ -129,6 +133,86 @@ describe("EmployeeListPage", () => {
       expect(fetchEmployeesMock).toHaveBeenLastCalledWith(
         expect.objectContaining({ page: 2 }),
       );
+    });
+  });
+
+  describe("filter dropdowns", () => {
+    beforeEach(() => {
+      fetchEmployeeFiltersMock.mockResolvedValue({
+        departments: ["Engineering", "Finance"],
+        countries: ["Germany", "India"],
+      });
+      fetchEmployeesMock.mockResolvedValue({
+        data: [mockEmployee],
+        pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
+      });
+    });
+
+    it("renders populated with the mocked filter options", async () => {
+      renderWithProviders(<EmployeeListPage />);
+
+      const departmentSelect = within(screen.getByTestId("department-filter")).getByRole(
+        "combobox",
+      );
+      const user = userEvent.setup();
+      await user.click(departmentSelect);
+
+      expect(await screen.findByText("Engineering")).toBeInTheDocument();
+      expect(await screen.findByText("Finance")).toBeInTheDocument();
+
+      const countrySelect = within(screen.getByTestId("country-filter")).getByRole("combobox");
+      await user.click(countrySelect);
+
+      expect(await screen.findByText("Germany")).toBeInTheDocument();
+      expect(await screen.findByText("India")).toBeInTheDocument();
+    });
+
+    it("triggers a new employee fetch including the selected department", async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<EmployeeListPage />);
+
+      await screen.findByText("Jane Doe");
+      fetchEmployeesMock.mockClear();
+
+      const departmentSelect = within(screen.getByTestId("department-filter")).getByRole(
+        "combobox",
+      );
+      await user.click(departmentSelect);
+      await user.click(await screen.findByText("Engineering"));
+
+      await waitFor(() => {
+        expect(fetchEmployeesMock).toHaveBeenLastCalledWith(
+          expect.objectContaining({ department: "Engineering", page: 1 }),
+        );
+      });
+    });
+
+    it("combines a selected department and a search term in the same request", async () => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval"] });
+      const user = userEvent.setup({ delay: null });
+      renderWithProviders(<EmployeeListPage />);
+
+      await vi.advanceTimersByTimeAsync(0);
+      fetchEmployeesMock.mockClear();
+
+      const departmentSelect = within(screen.getByTestId("department-filter")).getByRole(
+        "combobox",
+      );
+      await user.click(departmentSelect);
+      await user.click(await screen.findByText("Engineering"));
+
+      const searchInput = screen.getByPlaceholderText("Search by name or employee code");
+      fireEvent.change(searchInput, { target: { value: "Jane" } });
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+
+      expect(fetchEmployeesMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ department: "Engineering", search: "Jane" }),
+      );
+
+      vi.useRealTimers();
     });
   });
 });
