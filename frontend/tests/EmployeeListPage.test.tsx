@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { EmployeeListPage } from "../src/pages/EmployeeListPage";
 import { renderWithProviders } from "./testUtils";
@@ -95,7 +95,9 @@ describe("EmployeeListPage", () => {
 
       expect(fetchEmployeesMock).toHaveBeenCalledTimes(1);
 
-      await vi.advanceTimersByTimeAsync(300);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
 
       expect(fetchEmployeesMock).toHaveBeenCalledTimes(2);
       expect(fetchEmployeesMock).toHaveBeenLastCalledWith(

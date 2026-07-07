@@ -1,16 +1,23 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Empty, Flex, Input, Space } from "antd";
 import { EmployeeTable } from "../components/EmployeeTable";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useEmployees } from "../hooks/useEmployees";
 
 const DEFAULT_PAGE_SIZE = 20;
+const SEARCH_DEBOUNCE_MS = 300;
 
 export function EmployeeListPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS);
 
-  const query = useEmployees({ page, pageSize, search: searchInput || undefined });
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
+
+  const query = useEmployees({ page, pageSize, search: debouncedSearch || undefined });
 
   const data = query.data?.data ?? [];
   const pagination = query.data?.pagination ?? { page, pageSize, total: 0, totalPages: 0 };
