@@ -5,6 +5,8 @@ export interface UseEmployeesParams {
   page: number;
   pageSize: number;
   search?: string;
+  department?: string;
+  country?: string;
 }
 
 export function useEmployees(params: UseEmployeesParams) {

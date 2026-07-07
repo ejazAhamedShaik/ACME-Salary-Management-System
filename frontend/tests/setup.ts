@@ -23,3 +23,11 @@ if (typeof window.matchMedia !== "function") {
     dispatchEvent: () => false,
   });
 }
+
+if (typeof window.ResizeObserver !== "function") {
+  window.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}

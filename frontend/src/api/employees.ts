@@ -1,10 +1,12 @@
 import { API_BASE_URL } from "./apiClient";
-import type { Employee, PaginatedResponse } from "./types";
+import type { Employee, EmployeeFilters, PaginatedResponse } from "./types";
 
 export interface FetchEmployeesParams {
   page: number;
   pageSize: number;
   search?: string;
+  department?: string;
+  country?: string;
 }
 
 export async function fetchEmployees(
@@ -19,6 +21,14 @@ export async function fetchEmployees(
     query.set("search", params.search);
   }
 
+  if (params.department) {
+    query.set("department", params.department);
+  }
+
+  if (params.country) {
+    query.set("country", params.country);
+  }
+
   const response = await fetch(`${API_BASE_URL}/employees?${query.toString()}`);
 
   if (!response.ok) {
@@ -26,4 +36,14 @@ export async function fetchEmployees(
   }
 
   return response.json() as Promise<PaginatedResponse<Employee>>;
+}
+
+export async function fetchEmployeeFilters(): Promise<EmployeeFilters> {
+  const response = await fetch(`${API_BASE_URL}/employees/filters`);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch employee filters: ${response.status}`);
+  }
+
+  return response.json() as Promise<EmployeeFilters>;
 }

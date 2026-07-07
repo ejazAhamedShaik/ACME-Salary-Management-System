@@ -157,14 +157,14 @@ describe("EmployeeListPage", () => {
       const user = userEvent.setup();
       await user.click(departmentSelect);
 
-      expect(await screen.findByText("Engineering")).toBeInTheDocument();
-      expect(await screen.findByText("Finance")).toBeInTheDocument();
+      expect(await screen.findByRole("option", { name: "Engineering" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Finance" })).toBeInTheDocument();
 
       const countrySelect = within(screen.getByTestId("country-filter")).getByRole("combobox");
       await user.click(countrySelect);
 
-      expect(await screen.findByText("Germany")).toBeInTheDocument();
-      expect(await screen.findByText("India")).toBeInTheDocument();
+      expect(await screen.findByRole("option", { name: "Germany" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "India" })).toBeInTheDocument();
     });
 
     it("triggers a new employee fetch including the selected department", async () => {
@@ -178,7 +178,7 @@ describe("EmployeeListPage", () => {
         "combobox",
       );
       await user.click(departmentSelect);
-      await user.click(await screen.findByText("Engineering"));
+      await user.click(await screen.findByRole("option", { name: "Engineering" }));
 
       await waitFor(() => {
         expect(fetchEmployeesMock).toHaveBeenLastCalledWith(
@@ -188,31 +188,26 @@ describe("EmployeeListPage", () => {
     });
 
     it("combines a selected department and a search term in the same request", async () => {
-      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval"] });
-      const user = userEvent.setup({ delay: null });
+      const user = userEvent.setup();
       renderWithProviders(<EmployeeListPage />);
 
-      await vi.advanceTimersByTimeAsync(0);
+      await screen.findByText("Jane Doe");
       fetchEmployeesMock.mockClear();
 
       const departmentSelect = within(screen.getByTestId("department-filter")).getByRole(
         "combobox",
       );
       await user.click(departmentSelect);
-      await user.click(await screen.findByText("Engineering"));
+      await user.click(await screen.findByRole("option", { name: "Engineering" }));
 
       const searchInput = screen.getByPlaceholderText("Search by name or employee code");
-      fireEvent.change(searchInput, { target: { value: "Jane" } });
+      await user.type(searchInput, "Jane");
 
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(300);
+      await waitFor(() => {
+        expect(fetchEmployeesMock).toHaveBeenLastCalledWith(
+          expect.objectContaining({ department: "Engineering", search: "Jane" }),
+        );
       });
-
-      expect(fetchEmployeesMock).toHaveBeenLastCalledWith(
-        expect.objectContaining({ department: "Engineering", search: "Jane" }),
-      );
-
-      vi.useRealTimers();
     });
   });
 });

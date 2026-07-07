@@ -20,3 +20,8 @@ export interface PaginatedResponse<T> {
   data: T[];
   pagination: PaginationMeta;
 }
+
+export interface EmployeeFilters {
+  departments: string[];
+  countries: string[];
+}
