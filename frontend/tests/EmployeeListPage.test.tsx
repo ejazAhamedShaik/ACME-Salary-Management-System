@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { EmployeeListPage } from "../src/pages/EmployeeListPage";
 import { renderWithProviders } from "./testUtils";
 import { fetchEmployees } from "../src/api/employees";
@@ -22,6 +23,10 @@ const mockEmployee = {
 };
 
 describe("EmployeeListPage", () => {
+  beforeEach(() => {
+    fetchEmployeesMock.mockClear();
+  });
+
   it("renders a loading state before data resolves", async () => {
     fetchEmployeesMock.mockReturnValue(new Promise(() => {}));
 
@@ -60,6 +65,68 @@ describe("EmployeeListPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/couldn't load employees/i)).toBeInTheDocument();
+    });
+  });
+
+  describe("debounced search", () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval"] });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("does not call the API on every keystroke, only once after the debounce delay", async () => {
+      fetchEmployeesMock.mockResolvedValue({
+        data: [mockEmployee],
+        pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
+      });
+
+      renderWithProviders(<EmployeeListPage />);
+
+      await vi.advanceTimersByTimeAsync(0);
+      expect(fetchEmployeesMock).toHaveBeenCalledTimes(1);
+
+      const searchInput = screen.getByPlaceholderText("Search by name");
+      for (const partial of ["J", "Ja", "Jan", "Jane"]) {
+        fireEvent.change(searchInput, { target: { value: partial } });
+      }
+
+      expect(fetchEmployeesMock).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(300);
+
+      expect(fetchEmployeesMock).toHaveBeenCalledTimes(2);
+      expect(fetchEmployeesMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ search: "Jane", page: 1 }),
+      );
+    });
+  });
+
+  it("calls the API again with the new page when the table's page control changes", async () => {
+    const rows = Array.from({ length: 20 }, (_, index) => ({
+      ...mockEmployee,
+      id: index + 1,
+      employeeCode: `EMP-${String(index + 1).padStart(6, "0")}`,
+    }));
+
+    fetchEmployeesMock.mockResolvedValue({
+      data: rows,
+      pagination: { page: 1, pageSize: 20, total: 50, totalPages: 3 },
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<EmployeeListPage />);
+
+    await screen.findByText("EMP-000001");
+
+    await user.click(screen.getByTitle("2"));
+
+    await waitFor(() => {
+      expect(fetchEmployeesMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 2 }),
+      );
     });
   });
 });
