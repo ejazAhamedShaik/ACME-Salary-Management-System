@@ -89,3 +89,24 @@ learning a new library's conventions and more time on the actual feature work.
 **What we rejected:** Building bespoke components from a headless/utility-first
 base (e.g. Tailwind + Headless UI) — more flexible long-term, but slower to reach
 a working, polished admin UI for an assessment-scale project.
+
+## 6. Offset-based pagination over cursor-based
+
+**What we chose:** `GET /employees` paginates with `page`/`pageSize` query
+params, translated to SQL `LIMIT`/`OFFSET`, with results always ordered by `id`
+ascending so page boundaries are stable across requests.
+
+**Why:** This matches the API contract directly (`page`/`pageSize` in, a
+`{ page, pageSize, total, totalPages }` envelope out), is trivial to express
+with Drizzle's `.limit()/.offset()`, and a known `total`/`totalPages` is exactly
+what an admin-UI page control (page 3 of 347, jump to page N) needs. At this
+data scale — a single-tenant, ≤10,000-row, read-mostly dataset with no
+concurrent-pagination concerns — the well-known weaknesses of `OFFSET` (its cost
+growing with the offset, and pages shifting if rows are inserted/deleted between
+requests) don't materialize in practice.
+
+**What we rejected:** Keyset/cursor pagination (`WHERE id > lastId LIMIT n`) —
+stronger consistency under concurrent writes and no `OFFSET`-scan cost at very
+large offsets, but it trades away a simple `total`/page-count-driven UI for an
+opaque-cursor API, complexity this dataset's size and near-zero write
+concurrency (see decision 4) doesn't justify.

@@ -40,6 +40,46 @@ curl http://localhost:3000/health
 # {"status":"ok"}
 ```
 
+## API
+
+### `GET /employees`
+
+Paginated, searchable, filterable employee list.
+
+| Query param | Default | Notes |
+|---|---|---|
+| `page` | `1` | Invalid values (non-numeric, ≤0) fall back to the default. A valid page beyond the last one just returns an empty `data` array. |
+| `pageSize` | `20` | Invalid values fall back to the default; values above `100` are clamped to `100`, never rejected. |
+| `search` | — | Case-insensitive partial match against employee name. |
+| `department` | — | Exact match. |
+| `country` | — | Exact match. |
+
+`department`, `country`, and `search` combine with AND. Results are ordered by
+`id` ascending for stable pagination across requests. No matches is a normal
+200 response (`data: []`), never a 4xx/5xx.
+
+```bash
+curl "http://localhost:3000/employees?page=1&pageSize=5&department=Engineering"
+```
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "employeeCode": "EMP-000001",
+      "name": "Hugh Bechtelar",
+      "department": "Engineering",
+      "country": "India",
+      "currencyCode": "INR",
+      "salaryAmount": 193866,
+      "joinedAt": "2023-01-31T05:36:45.000Z"
+    }
+  ],
+  "pagination": { "page": 1, "pageSize": 5, "total": 1734, "totalPages": 347 }
+}
+```
+
 Other backend scripts:
 
 ```bash

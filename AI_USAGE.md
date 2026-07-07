@@ -60,3 +60,55 @@ rather than assumed, since several were newer majors than expected going in.
 
 > [human note: ] Accepted the changes after reviewing. This is first test written to make sure DB is consistent with data seeded. 
 
+## Entry 3 — GET /employees (pagination, search, filters)
+
+**What was asked:** Implement `GET /employees` per a given API contract (page/
+pageSize with defaults and a hard pageSize cap, case-insensitive partial name
+search, exact department/country filters combined with AND, stable `id`-ascending
+ordering, never a 4xx/5xx for "no matches"), using the existing routes→
+controllers→services→repositories layering, reusing the in-memory-db test
+pattern from Entry 2, following TDD, split across 4 labeled commits.
+
+**What was generated:**
+- `backend/src/repositories/employeeRepository.ts` — builds Drizzle
+  `eq()`/`like()` conditions from the active filters (hits the existing
+  `idx_employees_department`/`idx_employees_country` indexes), runs an indexed
+  `LIMIT`/`OFFSET` row query plus a separate `count(*)` query.
+- `backend/src/services/employeeService.ts` — computes the pagination offset and
+  `totalPages`, maps repository rows to a response DTO (`joinedAt` as an ISO
+  string rather than relying on implicit `Date` serialization).
+- `backend/src/controllers/employeeController.ts` — parses/clamps `page`,
+  `pageSize`, and trims the filter strings from `req.query`.
+- `backend/src/routes/employeeRoutes.ts` — mounts the controller under
+  `/employees`.
+- `backend/src/server.ts` — `createApp()` refactored to `createApp(db)` so the
+  employee repository can be wired with an injectable db connection; the
+  `client.ts` db import moved into the entrypoint guard (dynamic import) so
+  importing `server.ts` in tests no longer touches the real dev DB file as a
+  side effect.
+- `backend/tests/employees.test.ts` (new, 11 scenarios against an explicit,
+  hand-built fixture) and `backend/tests/health.test.ts` (updated to build its
+  own in-memory db and call `createApp(db)`).
+- Docs: README (new API section for the endpoint), ARCHITECTURE.md (entry 6,
+  offset-based vs. cursor-based pagination), this file.
+
+**Files touched:** see the 4 commits — `test: add failing tests for GET
+/employees...`, `refactor: extract createApp factory for testability`, `feat:
+implement GET /employees...`, `docs: document GET /employees...`.
+
+**Process note:** while turning the tests green, a bug was found in the test
+fixture itself (every department/country "bucket" was renaming its own last row
+to the search-test's distinctive name, so the search scenario matched 4 rows
+instead of 1) — fixed as part of the `feat` commit rather than amending the
+already-committed `test` commit, per this repo's no-amend convention. Also
+added an 11th test scenario beyond the 10 originally specified, distinguishing
+"invalid page falls back to the default" from "valid but out-of-range page
+echoes the requested page number with empty data" — two different rules that
+are easy to conflate in the controller's parsing logic.
+
+**Verification:** confirmed the department-filter query plan actually uses
+`idx_employees_department` (via `EXPLAIN QUERY PLAN`, not just "felt fast") and
+timed a deep-page, filtered request against the real 10,000-row seeded dev DB.
+
+> [human note: ] Implemented offset based pagination, written test cases to test GET /employees endpoint. Created employeesRepository helper to fetch the data from DB. Placed service and controller for /employees to format the data. 
+
