@@ -212,3 +212,5 @@ wasn't authorized. Confirmed: add the section, then proceed.
 
 > [human note: ] Implemented the search by employee code. But still the search is not working with employee code though we have data in DB. Debugging to fix the bug. 
 
+> [human note: ] Search by employee code is working fine, it was filing because of ambiguity in localhost port. 
+
