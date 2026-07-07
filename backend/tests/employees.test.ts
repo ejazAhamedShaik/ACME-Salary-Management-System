@@ -140,6 +140,25 @@ describe("GET /employees", () => {
     expect(response.body.data[0].name).toBe("Zephyr Unique");
   });
 
+  it("matches a partial, case-insensitive substring of employeeCode", async () => {
+    const app = createApp(db);
+
+    const response = await request(app).get("/employees").query({ search: "00005" });
+
+    expect(response.body.pagination.total).toBe(1);
+    expect(response.body.data[0].employeeCode).toBe("EMP-000005");
+  });
+
+  it("returns no matches when the search term matches neither name nor employeeCode", async () => {
+    const app = createApp(db);
+
+    const response = await request(app).get("/employees").query({ search: "notarealmatch" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data).toEqual([]);
+    expect(response.body.pagination.total).toBe(0);
+  });
+
   it("returns no matches for a filter combination that matches nothing", async () => {
     const app = createApp(db);
 
