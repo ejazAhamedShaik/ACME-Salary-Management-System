@@ -15,8 +15,14 @@ export interface PageWindow {
   offset: number;
 }
 
+export interface FilterOptions {
+  departments: string[];
+  countries: string[];
+}
+
 export interface EmployeeRepository {
   findMany(filter: EmployeeFilter, page: PageWindow): { rows: Employee[]; total: number };
+  findFilterOptions(): FilterOptions;
 }
 
 function buildWhereClause(filter: EmployeeFilter) {
@@ -64,6 +70,25 @@ export function createEmployeeRepository(
         .all();
 
       return { rows, total };
+    },
+
+    findFilterOptions() {
+      const departmentRows = db
+        .selectDistinct({ department: employees.department })
+        .from(employees)
+        .orderBy(asc(employees.department))
+        .all();
+
+      const countryRows = db
+        .selectDistinct({ country: employees.country })
+        .from(employees)
+        .orderBy(asc(employees.country))
+        .all();
+
+      return {
+        departments: departmentRows.map((row) => row.department),
+        countries: countryRows.map((row) => row.country),
+      };
     },
   };
 }

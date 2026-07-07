@@ -3,6 +3,7 @@ import type { EmployeeService } from "../services/employeeService.js";
 
 export interface EmployeeController {
   listEmployees(req: Request, res: Response): void;
+  listFilters(req: Request, res: Response): void;
 }
 
 const DEFAULT_PAGE = 1;
@@ -48,6 +49,10 @@ export function createEmployeeController(service: EmployeeService): EmployeeCont
       });
 
       res.status(200).json(result);
+    },
+
+    listFilters(req: Request, res: Response): void {
+      res.status(200).json(service.listFilters());
     },
   };
 }

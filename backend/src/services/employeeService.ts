@@ -1,4 +1,4 @@
-import type { EmployeeRepository } from "../repositories/employeeRepository.js";
+import type { EmployeeRepository, FilterOptions } from "../repositories/employeeRepository.js";
 
 export interface EmployeeListParams {
   page: number;
@@ -33,6 +33,7 @@ export interface EmployeeListResult {
 
 export interface EmployeeService {
   listEmployees(params: EmployeeListParams): EmployeeListResult;
+  listFilters(): FilterOptions;
 }
 
 export function createEmployeeService(repository: EmployeeRepository): EmployeeService {
@@ -66,6 +67,10 @@ export function createEmployeeService(repository: EmployeeRepository): EmployeeS
           totalPages: total === 0 ? 0 : Math.ceil(total / pageSize),
         },
       };
+    },
+
+    listFilters() {
+      return repository.findFilterOptions();
     },
   };
 }
