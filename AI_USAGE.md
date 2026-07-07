@@ -214,3 +214,69 @@ wasn't authorized. Confirmed: add the section, then proceed.
 
 > [human note: ] Search by employee code is working fine, it was filing because of ambiguity in localhost port. 
 
+## Entry 6 — GET /employees/filters and filter dropdowns
+
+**What was asked:** Implement `GET /employees/filters`, returning distinct,
+alphabetically sorted `departments` and `countries` derived from the
+`employees` table (not hardcoded), and wire two Ant Design `Select`
+dropdowns into the already-reserved layout slot on the employee list screen,
+each combining with search/pagination via the existing `useEmployees` query
+key. Each dropdown needed an explicit clear/"All X" option. Following TDD,
+split across 5 labeled commits.
+
+**What was generated:**
+- `backend/src/repositories/employeeRepository.ts` — `findFilterOptions()`,
+  running two independent `selectDistinct(...).orderBy(asc(...))` Drizzle
+  queries (department, country) rather than one combined query, each hitting
+  the existing indexes.
+- `backend/src/services/employeeService.ts`,
+  `backend/src/controllers/employeeController.ts`,
+  `backend/src/routes/employeeRoutes.ts` — thin `listFilters` pass-through
+  through the existing layering, mounted as `GET /filters` on the existing
+  employee router.
+- `backend/tests/filters.test.ts` (new, 3 scenarios against a small
+  purpose-built fixture: dedup, alphabetical sort, and a department/country
+  held by only one employee).
+- `frontend/src/api/types.ts` (`EmployeeFilters`), `frontend/src/api/employees.ts`
+  (`fetchEmployeeFilters`, and `department`/`country` added to
+  `FetchEmployeesParams`), `frontend/src/hooks/useEmployeeFilters.ts` (new,
+  5-minute `staleTime`), `frontend/src/hooks/useEmployees.ts` (params
+  extended).
+- `frontend/src/pages/EmployeeListPage.tsx` — `department`/`country` state,
+  the page-reset effect extended to cover them, and two `Select`s (each with
+  an explicit `{ value: "", label: "All X" }` option rather than relying on
+  `allowClear`) replacing the placeholder `<Space />` reserved in the
+  previous pass.
+- `frontend/tests/EmployeeListPage.test.tsx` (3 new scenarios: populated
+  dropdowns, a department selection triggering a re-fetch with `page: 1`,
+  and department + search combining in one request) and
+  `frontend/tests/App.test.tsx` (updated to mock `fetchEmployeeFilters`
+  alongside the existing `fetchEmployees` mock, since the page now always
+  fires both queries on mount).
+- Docs: README (new endpoint section, frontend dropdown note),
+  ARCHITECTURE.md (entry 8: derived filter options over a hardcoded list),
+  this file.
+
+**Files touched:** see the 5 commits — `test: add failing tests for GET
+/employees/filters`, `feat: implement GET /employees/filters`, `test: add
+failing tests for filter dropdown wiring and combined filtering`, `feat:
+wire department and country filter dropdowns into employee list`, `docs:
+document filters endpoint, derived-options decision, and AI usage`.
+
+**Process notes:**
+- Two test-infrastructure gaps surfaced only once the dropdowns actually
+  rendered in jsdom, both fixed as part of the `feat` (frontend) commit
+  rather than amending the already-committed `test` commit, per this
+  repo's no-amend convention: `rc-select`'s virtual list renders each
+  option twice (once visible, once for scroll-height measurement), which
+  produced "multiple elements" errors until `virtual={false}` was set on
+  both `Select`s; and jsdom has no `ResizeObserver` (which `rc-select`
+  needs), fixed with a polyfill in `tests/setup.ts` alongside the existing
+  `matchMedia` one.
+- The initial test queries selected dropdown options by matched text, which
+  collided with the mocked test employee's own department ("Engineering")
+  rendered in the table's department column — switched to
+  `getByRole("option", { name: ... })` scoping instead.
+
+> [human note: ]
+

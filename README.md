@@ -82,6 +82,23 @@ curl "http://localhost:3000/employees?page=1&pageSize=5&department=Engineering"
 }
 ```
 
+### `GET /employees/filters`
+
+Distinct department and country values currently present in the `employees`
+table, each alphabetically sorted with no duplicates — used to populate the
+employee list's filter dropdowns. No query params.
+
+```bash
+curl "http://localhost:3000/employees/filters"
+```
+
+```json
+{
+  "departments": ["Engineering", "Finance", "Human Resources", "Marketing", "Operations", "Sales"],
+  "countries": ["Australia", "Canada", "Germany", "India", "United Kingdom", "United States"]
+}
+```
+
 Other backend scripts:
 
 ```bash
@@ -100,6 +117,10 @@ npm install
 cp .env.example .env   # points VITE_API_BASE_URL at the local backend
 npm run dev            # starts the app on http://localhost:5173
 ```
+
+The employee list screen has department and country filter dropdowns next to
+the search box, populated from `GET /employees/filters`. Each defaults to
+"All Departments"/"All Countries" and combines with search via AND.
 
 Other frontend scripts:
 

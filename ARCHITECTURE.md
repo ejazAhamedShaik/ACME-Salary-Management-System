@@ -143,3 +143,25 @@ doesn't accept a sort parameter yet, and enabling Ant Design's client-side
 sort would only reorder the current page's rows, not the full result set —
 misleading at pagination boundaries. Revisit once the backend supports a sort
 query parameter.
+
+## 8. Derived filter options over a hardcoded list
+
+**What we chose:** `GET /employees/filters` computes its `departments` and
+`countries` arrays with `SELECT DISTINCT ... ORDER BY` against the live
+`employees` table, rather than the frontend or backend shipping a static list
+of the known department/country values.
+
+**Why:** The current seed data only ever populates a fixed set of six
+departments and six countries, so a hardcoded list would work today. But
+once employee create/delete exists, a hardcoded list can drift from reality
+in two ways: it can offer a filter option with zero current employees behind
+it (selecting it always returns an empty table, indistinguishable from a
+real "no matches" case), or it can silently omit a value that only exists
+because of newly created data. Deriving the list from the table guarantees
+every filter option always corresponds to at least one real, currently
+matching row.
+
+**What we rejected:** A hardcoded array of department/country strings on
+either the frontend or backend — simpler and marginally faster (no query),
+but only correct as long as the dataset never changes, which doesn't hold
+once create/delete ships.
