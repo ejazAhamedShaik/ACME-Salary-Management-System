@@ -173,5 +173,5 @@ confirmed with the developer before building it in.
   surfaced as soon as the first real antd `Table`/`Flex` combination was
   rendered in a test, not during the earlier placeholder-only smoke test.
 
-> [human note: ]
+> [human note: ] Created Employee search landing page with search and pagination features. To handle the complex state management of API data I have used tanstack react-query library. As we have huge amount of data, this library will help in managing state and caching API data. At this state only search is implemented. Filter by department/country and create/edit/delete is not yet implemented as API services are not yet developed. 
 
