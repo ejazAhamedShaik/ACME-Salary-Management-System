@@ -32,7 +32,7 @@ export function EmployeeListPage() {
     <div>
       <Flex gap="middle" wrap="wrap" style={{ marginBottom: 16 }}>
         <Input.Search
-          placeholder="Search by name"
+          placeholder="Search by name or employee code"
           style={{ maxWidth: 320 }}
           value={searchInput}
           onChange={(event) => setSearchInput(event.target.value)}

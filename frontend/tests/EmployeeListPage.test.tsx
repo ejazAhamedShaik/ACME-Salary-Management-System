@@ -88,7 +88,7 @@ describe("EmployeeListPage", () => {
       await vi.advanceTimersByTimeAsync(0);
       expect(fetchEmployeesMock).toHaveBeenCalledTimes(1);
 
-      const searchInput = screen.getByPlaceholderText("Search by name");
+      const searchInput = screen.getByPlaceholderText("Search by name or employee code");
       for (const partial of ["J", "Ja", "Jan", "Jane"]) {
         fireEvent.change(searchInput, { target: { value: partial } });
       }

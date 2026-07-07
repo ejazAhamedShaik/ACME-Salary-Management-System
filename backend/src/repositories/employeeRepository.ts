@@ -1,4 +1,4 @@
-import { and, asc, eq, like, sql } from "drizzle-orm";
+import { and, asc, eq, like, or, sql } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { employees } from "../db/schema.js";
 
@@ -29,7 +29,13 @@ function buildWhereClause(filter: EmployeeFilter) {
     conditions.push(eq(employees.country, filter.country));
   }
   if (filter.search) {
-    conditions.push(like(sql`lower(${employees.name})`, `%${filter.search.toLowerCase()}%`));
+    const term = `%${filter.search.toLowerCase()}%`;
+    conditions.push(
+      or(
+        like(sql`lower(${employees.name})`, term),
+        like(sql`lower(${employees.employeeCode})`, term),
+      ),
+    );
   }
 
   return conditions.length > 0 ? and(...conditions) : undefined;

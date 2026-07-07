@@ -16,6 +16,6 @@ describe("App", () => {
 
     renderWithProviders(<App />);
 
-    expect(screen.getByPlaceholderText("Search by name")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Search by name or employee code")).toBeInTheDocument();
   });
 });
