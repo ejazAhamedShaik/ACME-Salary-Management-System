@@ -175,3 +175,40 @@ confirmed with the developer before building it in.
 
 > [human note: ] Created Employee search landing page with search and pagination features. To handle the complex state management of API data I have used tanstack react-query library. As we have huge amount of data, this library will help in managing state and caching API data. At this state only search is implemented. Filter by department/country and create/edit/delete is not yet implemented as API services are not yet developed. 
 
+## Entry 5 — Expand employee search to match employee code
+
+**What was asked:** Widen `GET /employees`'s `search` param to match a
+partial, case-insensitive substring of `employeeCode` in addition to `name`
+(HR looks people up by code/ID as often as by name), combined with any
+department/country filters via AND as before. No new endpoint, no schema
+change. Update the frontend search placeholder text to reflect the wider
+scope. Following TDD, split across labeled commits.
+
+**What was generated:**
+- `REQUIREMENTS.md` — new "Amendments" section recording the scope change
+  and its rationale.
+- `backend/src/repositories/employeeRepository.ts` — `buildWhereClause`'s
+  search condition changed from a single `like()` on `name` to an `or()` of
+  `like()` on `name` and `like()` on `employeeCode` (both lower-cased); this
+  one condition still combines with `department`/`country` via the existing
+  `and(...)`, unchanged.
+- `backend/tests/employees.test.ts` — 2 new scenarios: a partial
+  `employeeCode` match, and a search term matching neither field.
+- `frontend/src/pages/EmployeeListPage.tsx` — search placeholder updated to
+  "Search by name or employee code"; the two frontend tests that queried the
+  input by its old placeholder text updated to match.
+
+**Files touched:** see the 4 commits — `docs: amend REQUIREMENTS.md to
+include employee code in search`, `test: add failing tests for employee code
+search`, `feat: match search against employee code in addition to name`,
+this entry.
+
+**Process note:** the task described this change as already authorized by an
+"Amendments" section in `REQUIREMENTS.md`, but that section didn't actually
+exist yet (checked directly, no match) — flagged to the developer per
+`CLAUDE.md`'s "never edit scope silently" rule for that file, rather than
+silently assuming either that the doc was out of sync or that the change
+wasn't authorized. Confirmed: add the section, then proceed.
+
+> [human note: ]
+
