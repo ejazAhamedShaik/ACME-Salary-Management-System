@@ -57,3 +57,9 @@ separately in `ARCHITECTURE.md`.
 - Salary history / raise tracking over time
 - Real-time FX rates
 - Payroll / tax system integration
+
+## Amendments
+
+- **Employee search covers employee code, not just name.** HR looks people up
+  by employee code/ID as often as by name, so the directory's search matches
+  a partial, case-insensitive substring of either.
