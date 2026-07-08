@@ -7,6 +7,7 @@ import { EditEmployeeModal } from "../components/EditEmployeeModal";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useEmployeeFilters } from "../hooks/useEmployeeFilters";
 import { useEmployees } from "../hooks/useEmployees";
+import { useDeleteEmployee } from "../hooks/useDeleteEmployee";
 import type { Employee } from "../api/types";
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -23,6 +24,7 @@ export function EmployeeListPage() {
   const debouncedSearch = useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS);
 
   const filtersQuery = useEmployeeFilters();
+  const deleteMutation = useDeleteEmployee();
 
   useEffect(() => {
     setPage(1);
@@ -35,6 +37,16 @@ export function EmployeeListPage() {
     department: department || undefined,
     country: country || undefined,
   });
+
+  useEffect(() => {
+    if (!query.isFetching && query.data?.data.length === 0 && page > 1) {
+      setPage(1);
+    }
+  }, [query.isFetching, query.data, page]);
+
+  function handleDelete(employee: Employee) {
+    deleteMutation.mutate(employee.id);
+  }
 
   const departmentOptions = [
     { value: "", label: "All Departments" },
@@ -106,6 +118,7 @@ export function EmployeeListPage() {
           isFetching={query.isFetching}
           onChange={handleTableChange}
           onEdit={setEditingEmployee}
+          onDelete={handleDelete}
         />
       )}
     </div>

@@ -9,6 +9,7 @@ vi.mock("../src/api/employees", () => ({
   fetchEmployeeFilters: vi.fn(),
   createEmployee: vi.fn(),
   updateEmployee: vi.fn(),
+  deleteEmployee: vi.fn(),
 }));
 
 const fetchEmployeesMock = vi.mocked(fetchEmployees);

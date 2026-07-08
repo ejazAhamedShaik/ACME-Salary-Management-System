@@ -1,6 +1,6 @@
-import { Button, Table } from "antd";
+import { Button, Popconfirm, Space, Table } from "antd";
 import type { TableProps } from "antd";
-import { EditOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import type { Employee, PaginationMeta } from "../api/types";
 
 export interface EmployeeTableProps {
@@ -9,9 +9,13 @@ export interface EmployeeTableProps {
   isFetching: boolean;
   onChange: (page: number, pageSize: number) => void;
   onEdit: (employee: Employee) => void;
+  onDelete: (employee: Employee) => void;
 }
 
-function buildColumns(onEdit: (employee: Employee) => void): TableProps<Employee>["columns"] {
+function buildColumns(
+  onEdit: (employee: Employee) => void,
+  onDelete: (employee: Employee) => void,
+): TableProps<Employee>["columns"] {
   return [
     { title: "Employee Code", dataIndex: "employeeCode", key: "employeeCode" },
     { title: "Name", dataIndex: "name", key: "name" },
@@ -33,22 +37,39 @@ function buildColumns(onEdit: (employee: Employee) => void): TableProps<Employee
       title: "Actions",
       key: "actions",
       render: (_, employee) => (
-        <Button
-          type="text"
-          aria-label={`Edit ${employee.name}`}
-          icon={<EditOutlined />}
-          onClick={() => onEdit(employee)}
-        />
+        <Space>
+          <Button
+            type="text"
+            aria-label={`Edit ${employee.name}`}
+            icon={<EditOutlined />}
+            onClick={() => onEdit(employee)}
+          />
+          <Popconfirm
+            title="Remove this employee?"
+            okText="Delete"
+            cancelText="Cancel"
+            onConfirm={() => onDelete(employee)}
+          >
+            <Button type="text" danger aria-label={`Delete ${employee.name}`} icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
 }
 
-export function EmployeeTable({ data, pagination, isFetching, onChange, onEdit }: EmployeeTableProps) {
+export function EmployeeTable({
+  data,
+  pagination,
+  isFetching,
+  onChange,
+  onEdit,
+  onDelete,
+}: EmployeeTableProps) {
   return (
     <Table<Employee>
       rowKey="id"
-      columns={buildColumns(onEdit)}
+      columns={buildColumns(onEdit, onDelete)}
       dataSource={data}
       loading={isFetching}
       pagination={{
