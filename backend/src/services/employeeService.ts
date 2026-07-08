@@ -1,4 +1,8 @@
-import type { EmployeeRepository, FilterOptions } from "../repositories/employeeRepository.js";
+import type {
+  EmployeeRepository,
+  FilterOptions,
+  UpdateEmployeeRow,
+} from "../repositories/employeeRepository.js";
 
 export interface EmployeeListParams {
   page: number;
@@ -40,10 +44,20 @@ export interface CreateEmployeeInput {
   joinedAt: string;
 }
 
+export interface UpdateEmployeeInput {
+  name?: string;
+  department?: string;
+  country?: string;
+  currencyCode?: string;
+  salaryAmount?: number;
+  joinedAt?: string;
+}
+
 export interface EmployeeService {
   listEmployees(params: EmployeeListParams): EmployeeListResult;
   listFilters(): FilterOptions;
   createEmployee(input: CreateEmployeeInput): EmployeeDto;
+  updateEmployee(id: number, input: UpdateEmployeeInput): EmployeeDto | null;
 }
 
 const EMPLOYEE_CODE_PREFIX = "EMP-";
@@ -112,6 +126,32 @@ export function createEmployeeService(repository: EmployeeRepository): EmployeeS
         currencyCode: created.currencyCode,
         salaryAmount: created.salaryAmount,
         joinedAt: created.joinedAt.toISOString(),
+      };
+    },
+
+    updateEmployee(id, input) {
+      const row: UpdateEmployeeRow = {};
+      if (input.name !== undefined) row.name = input.name;
+      if (input.department !== undefined) row.department = input.department;
+      if (input.country !== undefined) row.country = input.country;
+      if (input.currencyCode !== undefined) row.currencyCode = input.currencyCode;
+      if (input.salaryAmount !== undefined) row.salaryAmount = input.salaryAmount;
+      if (input.joinedAt !== undefined) row.joinedAt = new Date(input.joinedAt);
+
+      const updated = repository.update(id, row);
+      if (!updated) {
+        return null;
+      }
+
+      return {
+        id: updated.id,
+        employeeCode: updated.employeeCode,
+        name: updated.name,
+        department: updated.department,
+        country: updated.country,
+        currencyCode: updated.currencyCode,
+        salaryAmount: updated.salaryAmount,
+        joinedAt: updated.joinedAt.toISOString(),
       };
     },
   };

@@ -22,11 +22,21 @@ export interface FilterOptions {
 
 export type NewEmployeeRow = typeof employees.$inferInsert;
 
+export type UpdateEmployeeRow = Partial<{
+  name: string;
+  department: string;
+  country: string;
+  currencyCode: string;
+  salaryAmount: number;
+  joinedAt: Date;
+}>;
+
 export interface EmployeeRepository {
   findMany(filter: EmployeeFilter, page: PageWindow): { rows: Employee[]; total: number };
   findFilterOptions(): FilterOptions;
   findMaxEmployeeCodeNumber(): number;
   create(row: NewEmployeeRow): Employee;
+  update(id: number, row: UpdateEmployeeRow): Employee | undefined;
 }
 
 function buildWhereClause(filter: EmployeeFilter) {
@@ -107,6 +117,13 @@ export function createEmployeeRepository(
 
     create(row) {
       return db.insert(employees).values(row).returning().get();
+    },
+
+    update(id, row) {
+      if (Object.keys(row).length === 0) {
+        return db.select().from(employees).where(eq(employees.id, id)).get();
+      }
+      return db.update(employees).set(row).where(eq(employees.id, id)).returning().get();
     },
   };
 }

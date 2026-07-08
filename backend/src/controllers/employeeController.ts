@@ -1,12 +1,13 @@
 import type { Request, Response } from "express";
 import type { ZodError } from "zod";
 import type { EmployeeService } from "../services/employeeService.js";
-import { createEmployeeSchema } from "../validation/employeeValidation.js";
+import { createEmployeeSchema, updateEmployeeSchema } from "../validation/employeeValidation.js";
 
 export interface EmployeeController {
   listEmployees(req: Request, res: Response): void;
   listFilters(req: Request, res: Response): void;
   createEmployee(req: Request, res: Response): void;
+  updateEmployee(req: Request, res: Response): void;
 }
 
 const DEFAULT_PAGE = 1;
@@ -78,6 +79,28 @@ export function createEmployeeController(service: EmployeeService): EmployeeCont
       }
 
       res.status(201).json(service.createEmployee(result.data));
+    },
+
+    updateEmployee(req: Request, res: Response): void {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id)) {
+        res.status(404).end();
+        return;
+      }
+
+      const result = updateEmployeeSchema.safeParse(req.body);
+      if (!result.success) {
+        res.status(400).json({ errors: formatZodErrors(result.error) });
+        return;
+      }
+
+      const updated = service.updateEmployee(id, result.data);
+      if (!updated) {
+        res.status(404).end();
+        return;
+      }
+
+      res.status(200).json(updated);
     },
   };
 }
