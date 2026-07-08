@@ -77,6 +77,20 @@ describe("EditEmployeeModal", () => {
     });
   });
 
+  it("closes the modal only after a successful update", async () => {
+    updateEmployeeMock.mockResolvedValue({ ...employee, department: "Finance" });
+    const handleClose = vi.fn();
+    const user = userEvent.setup();
+    renderWithProviders(<EditEmployeeModal employee={employee} onClose={handleClose} />);
+
+    await screen.findByDisplayValue("Ada Lovelace");
+    await user.click(screen.getByLabelText("Department"));
+    await user.click(await screen.findByRole("option", { name: "Finance" }));
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    await waitFor(() => expect(handleClose).toHaveBeenCalled());
+  });
+
   it("surfaces a mocked 400 field error onto the matching Form.Item", async () => {
     updateEmployeeMock.mockRejectedValue(
       new ApiFieldError({ salaryAmount: "Salary amount must be greater than zero" }),
