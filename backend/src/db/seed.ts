@@ -2,6 +2,7 @@ import { faker } from "@faker-js/faker";
 import { pathToFileURL } from "node:url";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { employees } from "./schema.js";
+import { COUNTRY_CURRENCY_DEFAULTS } from "../config/countryCurrencyDefaults.js";
 
 const SEED = 20260706;
 const TOTAL_EMPLOYEES = 10_000;
@@ -9,14 +10,9 @@ const BATCH_SIZE = 500;
 
 const DEPARTMENTS = ["Engineering", "Sales", "Marketing", "Finance", "Human Resources", "Operations"];
 
-const COUNTRIES: Array<{ country: string; currencyCode: string }> = [
-  { country: "United States", currencyCode: "USD" },
-  { country: "United Kingdom", currencyCode: "GBP" },
-  { country: "Germany", currencyCode: "EUR" },
-  { country: "India", currencyCode: "INR" },
-  { country: "Canada", currencyCode: "CAD" },
-  { country: "Australia", currencyCode: "AUD" },
-];
+const COUNTRIES: Array<{ country: string; currencyCode: string }> = Object.entries(
+  COUNTRY_CURRENCY_DEFAULTS,
+).map(([country, currencyCode]) => ({ country, currencyCode }));
 
 function buildEmployee(index: number) {
   const { country, currencyCode } = faker.helpers.arrayElement(COUNTRIES);
