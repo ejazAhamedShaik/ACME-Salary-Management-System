@@ -4,14 +4,18 @@ import userEvent from "@testing-library/user-event";
 import { EmployeeListPage } from "../src/pages/EmployeeListPage";
 import { renderWithProviders } from "./testUtils";
 import { fetchEmployeeFilters, fetchEmployees } from "../src/api/employees";
+import { fetchCurrencyConfig } from "../src/api/config";
 
 vi.mock("../src/api/employees", () => ({
   fetchEmployees: vi.fn(),
   fetchEmployeeFilters: vi.fn(),
+  createEmployee: vi.fn(),
 }));
+vi.mock("../src/api/config", () => ({ fetchCurrencyConfig: vi.fn() }));
 
 const fetchEmployeesMock = vi.mocked(fetchEmployees);
 const fetchEmployeeFiltersMock = vi.mocked(fetchEmployeeFilters);
+const fetchCurrencyConfigMock = vi.mocked(fetchCurrencyConfig);
 
 const mockEmployee = {
   id: 1,
@@ -209,5 +213,22 @@ describe("EmployeeListPage", () => {
         );
       });
     });
+  });
+
+  it("opens the create employee modal when Add Employee is clicked", async () => {
+    fetchEmployeesMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0 },
+    });
+    fetchCurrencyConfigMock.mockResolvedValue({
+      currencies: ["USD"],
+      countryCurrencyDefaults: {},
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<EmployeeListPage />);
+
+    await user.click(screen.getByRole("button", { name: /add employee/i }));
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
 });

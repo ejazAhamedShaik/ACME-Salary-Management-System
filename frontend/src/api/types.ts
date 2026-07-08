@@ -25,3 +25,17 @@ export interface EmployeeFilters {
   departments: string[];
   countries: string[];
 }
+
+export interface CurrencyConfig {
+  currencies: string[];
+  countryCurrencyDefaults: Record<string, string>;
+}
+
+export interface CreateEmployeePayload {
+  name: string;
+  department: string;
+  country: string;
+  currencyCode: string;
+  salaryAmount: number;
+  joinedAt: string;
+}

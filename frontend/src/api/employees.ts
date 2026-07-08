@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "./apiClient";
-import type { Employee, EmployeeFilters, PaginatedResponse } from "./types";
+import type { CreateEmployeePayload, Employee, EmployeeFilters, PaginatedResponse } from "./types";
 
 export interface FetchEmployeesParams {
   page: number;
@@ -46,4 +46,8 @@ export async function fetchEmployeeFilters(): Promise<EmployeeFilters> {
   }
 
   return response.json() as Promise<EmployeeFilters>;
+}
+
+export async function createEmployee(payload: CreateEmployeePayload): Promise<Employee> {
+  throw new Error("not implemented");
 }
