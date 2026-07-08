@@ -592,3 +592,8 @@ failing tests for delete confirmation flow and page-reset-on-empty`,
   commit.
 
 > [human note: ] 
+> Developed the endpoint for delete action at DELETE /employees/:id. 
+> In the employee table given a delete button in the actions column. Once user clicks the button, it'll ask for confirmation and on confirming it'll delete the user. 
+> Failing tests were written for both BE and FE and then code was written to achieve green flag. 
+
+
