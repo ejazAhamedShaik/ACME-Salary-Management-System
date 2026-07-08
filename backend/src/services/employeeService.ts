@@ -31,9 +31,26 @@ export interface EmployeeListResult {
   pagination: PaginationMeta;
 }
 
+export interface CreateEmployeeInput {
+  name: string;
+  department: string;
+  country: string;
+  currencyCode: string;
+  salaryAmount: number;
+  joinedAt: string;
+}
+
 export interface EmployeeService {
   listEmployees(params: EmployeeListParams): EmployeeListResult;
   listFilters(): FilterOptions;
+  createEmployee(input: CreateEmployeeInput): EmployeeDto;
+}
+
+const EMPLOYEE_CODE_PREFIX = "EMP-";
+const EMPLOYEE_CODE_DIGITS = 6;
+
+function nextEmployeeCode(maxNumber: number): string {
+  return `${EMPLOYEE_CODE_PREFIX}${String(maxNumber + 1).padStart(EMPLOYEE_CODE_DIGITS, "0")}`;
 }
 
 export function createEmployeeService(repository: EmployeeRepository): EmployeeService {
@@ -71,6 +88,31 @@ export function createEmployeeService(repository: EmployeeRepository): EmployeeS
 
     listFilters() {
       return repository.findFilterOptions();
+    },
+
+    createEmployee(input) {
+      const employeeCode = nextEmployeeCode(repository.findMaxEmployeeCodeNumber());
+
+      const created = repository.create({
+        employeeCode,
+        name: input.name,
+        department: input.department,
+        country: input.country,
+        currencyCode: input.currencyCode,
+        salaryAmount: input.salaryAmount,
+        joinedAt: new Date(input.joinedAt),
+      });
+
+      return {
+        id: created.id,
+        employeeCode: created.employeeCode,
+        name: created.name,
+        department: created.department,
+        country: created.country,
+        currencyCode: created.currencyCode,
+        salaryAmount: created.salaryAmount,
+        joinedAt: created.joinedAt.toISOString(),
+      };
     },
   };
 }

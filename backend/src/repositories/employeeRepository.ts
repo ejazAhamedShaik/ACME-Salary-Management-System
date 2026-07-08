@@ -20,9 +20,13 @@ export interface FilterOptions {
   countries: string[];
 }
 
+export type NewEmployeeRow = typeof employees.$inferInsert;
+
 export interface EmployeeRepository {
   findMany(filter: EmployeeFilter, page: PageWindow): { rows: Employee[]; total: number };
   findFilterOptions(): FilterOptions;
+  findMaxEmployeeCodeNumber(): number;
+  create(row: NewEmployeeRow): Employee;
 }
 
 function buildWhereClause(filter: EmployeeFilter) {
@@ -89,6 +93,20 @@ export function createEmployeeRepository(
         departments: departmentRows.map((row) => row.department),
         countries: countryRows.map((row) => row.country),
       };
+    },
+
+    findMaxEmployeeCodeNumber() {
+      const [row] = db
+        .select({
+          maxNumber: sql<number | null>`MAX(CAST(SUBSTR(${employees.employeeCode}, 5) AS INTEGER))`,
+        })
+        .from(employees)
+        .all();
+      return row?.maxNumber ?? 0;
+    },
+
+    create(row) {
+      return db.insert(employees).values(row).returning().get();
     },
   };
 }
