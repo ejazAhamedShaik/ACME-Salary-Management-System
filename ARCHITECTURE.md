@@ -373,3 +373,47 @@ This closes out the CRUD set for `/employees` — create (`POST`), read
 the same route → controller → service → repository layering, the same
 in-memory-db test pattern, and the same `{ errors: { field: message } }`
 error shape wherever validation applies.
+
+## 17. Insights: SQL-groups-then-JS-converts, ranked by converted value only, skip-and-warn on bad currency codes
+
+**What we chose:** `GET /insights/summary` runs a single query grouped by
+`(department, country, currencyCode)` — `SUM(salaryAmount)` and `COUNT(*)`
+per group — rather than pulling all 10,000 raw rows. Each group's summed
+amount is converted to USD in application code (`convertToUSD`, shared with
+`/insights/outliers`), then the converted groups are rolled up into the
+by-department/by-country/grand-total figures. `GET /insights/outliers`
+selects only the six columns it needs (never `SELECT *`) for all employees,
+converts each row to `salaryUSD` in application code, and ranks
+highest/lowest **by `salaryUSD`, never native `salaryAmount`** — comparing
+unconverted figures across currencies would rank a large INR number above a
+much more valuable small GBP number, which is meaningless.
+
+If a row's `currencyCode` isn't a key in `currencyRatesToUsd`,
+`convertToUSD` logs a warning and returns `null` instead of throwing, and
+the caller excludes that row/group from monetary aggregation rather than
+failing the whole request. This is a realistic scenario, not a hypothetical
+edge case: `db/seed.ts` inserts rows directly via Drizzle, bypassing the Zod
+schema (`employeeValidation.ts`) that is the *only* place `currencyCode` is
+validated against the rates table — so a future seed change or a direct DB
+write could introduce a row this table can't price, and the app needs to
+degrade gracefully rather than 500 on every insights request.
+
+One deliberate asymmetry: `headcountByDepartment`/`headcountByCountry`
+count every group's rows unconditionally, *including* ones with an
+unconvertible currency — headcount doesn't go through `convertToUSD` at all,
+so there's nothing there to exclude. This means a department's public
+headcount figure and the denominator used internally to compute its average
+salary can diverge if that department has any employees with a bad currency
+code (headcount includes them, the average's denominator doesn't). We
+rejected excluding those rows from headcount too — headcount answers "how
+many people are in this department," a question a pricing-table gap has no
+bearing on.
+
+**What we rejected:** Pulling all 10,000 raw employee rows and aggregating
+in JS with no SQL-side grouping — correct, but does 10,000x more row-scanning
+and JS-side work than necessary when the grouped query returns at most
+`departments × countries × currencies` rows (36 in the current seed data).
+Also rejected: throwing/500-ing the whole request on an unrecognized
+currency code — would make one bad row (from a bypassed-validation write)
+take down aggregate reporting entirely, worse than a slightly incomplete but
+available answer.

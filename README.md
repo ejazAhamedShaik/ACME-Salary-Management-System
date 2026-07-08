@@ -188,6 +188,68 @@ curl "http://localhost:3000/config/currencies"
 }
 ```
 
+### `GET /insights/summary`
+
+Org-wide payroll aggregates — total payroll, averages, and headcounts, each
+broken down by department and by country. All monetary figures are
+normalized to USD via the static `config/currencyRates.ts` table (see
+`ARCHITECTURE.md` for why) and rounded to whole units. No query params.
+
+```bash
+curl "http://localhost:3000/insights/summary"
+```
+
+```json
+{
+  "totalPayrollUSD": 1019676058,
+  "totalPayrollByCountryUSD": { "India": 2495166, "United Kingdom": 263501302 },
+  "avgSalaryByDepartmentUSD": { "Engineering": 101632, "Sales": 102021 },
+  "avgSalaryByCountryUSD": { "India": 1561, "United Kingdom": 158736 },
+  "headcountByDepartment": { "Engineering": 1736, "Sales": 1596 },
+  "headcountByCountry": { "India": 1598, "United Kingdom": 1660 }
+}
+```
+
+### `GET /insights/outliers`
+
+The highest- and lowest-paid employee in each department, ranked by
+USD-converted salary (`salaryUSD`) — never the native `salaryAmount`, since
+comparing unconverted figures across currencies would be meaningless. A
+department with exactly one employee returns that employee as both
+`highest` and `lowest`. No query params.
+
+```bash
+curl "http://localhost:3000/insights/outliers"
+```
+
+```json
+{
+  "outliersByDepartment": [
+    {
+      "department": "Engineering",
+      "highest": {
+        "id": 373,
+        "employeeCode": "EMP-000373",
+        "name": "Titus Fahey",
+        "country": "United Kingdom",
+        "currencyCode": "GBP",
+        "salaryAmount": 218669,
+        "salaryUSD": 277710
+      },
+      "lowest": {
+        "id": 7715,
+        "employeeCode": "EMP-007715",
+        "name": "Korey Marvin",
+        "country": "India",
+        "currencyCode": "INR",
+        "salaryAmount": 35051,
+        "salaryUSD": 421
+      }
+    }
+  ]
+}
+```
+
 Other backend scripts:
 
 ```bash

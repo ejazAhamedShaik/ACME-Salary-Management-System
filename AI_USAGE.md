@@ -596,4 +596,90 @@ failing tests for delete confirmation flow and page-reset-on-empty`,
 > In the employee table given a delete button in the actions column. Once user clicks the button, it'll ask for confirmation and on confirming it'll delete the user. 
 > Failing tests were written for both BE and FE and then code was written to achieve green flag. 
 
+## Entry 10 — GET /insights/summary and GET /insights/outliers (2026-07-08)
+
+**What was asked:** Implement the two remaining backend routes from the
+original API design — org-wide payroll aggregates (`GET /insights/summary`)
+and per-department highest/lowest-paid employees (`GET /insights/outliers`)
+— backend only, no frontend wiring this pass. A shared `convertToUSD`
+utility was specified explicitly, reading `config/currencyRates.ts`,
+returning `null` and logging a warning (rather than throwing) for an
+unrecognized `currencyCode`. `GET /insights/summary` was specified to query
+grouped by `(department, country, currencyCode)` — `SUM`/`COUNT` per group
+— converting each group's summed amount to USD in application code rather
+than pulling all 10,000 raw rows; headcount fields were specified as plain,
+conversion-free counts. `GET /insights/outliers` was specified to rank
+highest/lowest strictly by converted `salaryUSD`, never native
+`salaryAmount`, with a single-employee department legitimately returning
+that employee as both. Following TDD, split across 7 labeled commits.
+
+**What was generated:**
+- `backend/src/services/currencyConversion.ts` (new) — `convertToUSD(amount, currencyCode)`,
+  shared by both new endpoints.
+- `backend/src/repositories/insightsRepository.ts` (new) — `findSalaryGroups()`
+  (one Drizzle query, `.groupBy(department, country, currencyCode)` with
+  `sql<number>` `SUM`/`COUNT` templates, mirroring the existing `count(*)`
+  aggregate pattern in `employeeRepository.ts`) and
+  `findEmployeesForOutliers()` (an explicit six-column select, not
+  `SELECT *`).
+- `backend/src/services/insightsService.ts` (new) — `getSummary()` rolls the
+  grouped rows into `totalPayrollUSD`, `totalPayrollByCountryUSD`,
+  `avgSalaryByDepartmentUSD`, `avgSalaryByCountryUSD` (all rounded via
+  `Math.round`), and `headcountByDepartment`/`headcountByCountry` (summed
+  unconditionally, independent of currency-conversion success — see
+  `ARCHITECTURE.md` entry 17 for the resulting headcount/average-denominator
+  asymmetry on bad currency codes). `getOutliers()` converts each employee
+  row to `salaryUSD`, drops rows that fail conversion, groups by department,
+  and reduces each group to `highest`/`lowest` by `salaryUSD`.
+- `backend/src/controllers/insightsController.ts` and
+  `backend/src/routes/insightsRoutes.ts` (new) — thin, parameter-free
+  pass-throughs mirroring `configController.ts`'s no-repository-touching
+  handler style.
+- `backend/src/server.ts` — new `insightsRepository`/`insightsService`/
+  `insightsRouter` wiring block, mounted at `/insights`, identical shape to
+  the existing `/employees` and `/config` blocks.
+- `backend/tests/currencyConversion.test.ts` (new, 2 scenarios — a known
+  clean-number conversion, an unrecognized code not throwing),
+  `backend/tests/insightsSummary.test.ts` (new, 4 scenarios against a
+  5-row fixture spanning 2 departments/3 countries/3 currencies chosen so
+  most totals/averages are exact integers except one deliberately
+  fractional department average, used to prove rounding),
+  `backend/tests/insightsOutliers.test.ts` (new, 3 scenarios: a
+  native-vs-USD ranking-order disagreement fixture, a single-employee
+  department, and a row with an unrecognized currency code excluded from
+  results).
+- Docs: README (`GET /insights/summary`/`GET /insights/outliers` sections
+  with example responses drawn from the real seeded dev DB), ARCHITECTURE.md
+  (entry 17: SQL-groups-then-JS-converts, ranking by converted value only,
+  the skip-and-warn behavior and its headcount/average asymmetry), this
+  file.
+
+**Files touched:** see the 7 commits — `test: add failing tests for
+convertToUSD utility`, `feat: implement shared currency conversion utility`,
+`test: add failing tests for GET /insights/summary`, `feat: implement GET
+/insights/summary`, `test: add failing tests for GET /insights/outliers`,
+`feat: implement GET /insights/outliers`, `docs: document conversion
+approach and outlier definition in ARCHITECTURE.md`.
+
+**Process notes:**
+- The headcount-vs-average-denominator asymmetry (headcount counts every
+  group unconditionally; the two `avgSalary...USD` maps only average over
+  groups that actually converted) isn't pinned down by any of the task's
+  specified test scenarios — none of them exercise a summary fixture with a
+  bad currency code. This was flagged in the plan before implementation,
+  along with the reasoning, rather than silently picked and discovered
+  later.
+- Verified directly against a real in-memory Drizzle DB (not assumed) that
+  multi-column `.groupBy(a, b, c)` and `sql<number>` `SUM`/`COUNT` templates
+  return genuine JS numbers from `better-sqlite3`, consistent with this
+  repo's established "verify runtime behavior, don't guess" practice from
+  earlier entries.
+- Verified both endpoints end-to-end against the real ~10,000-row seeded dev
+  DB via direct `curl` requests (not just the test suite): headcounts sum
+  close to the real employee count, outliers correctly rank a GBP salary
+  above a numerically larger INR salary, confirming USD-based ranking works
+  on real data, not just hand-built fixtures.
+
+> [human note: ]
+
 
