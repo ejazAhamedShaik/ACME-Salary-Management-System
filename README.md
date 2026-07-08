@@ -99,6 +99,62 @@ curl "http://localhost:3000/employees/filters"
 }
 ```
 
+### `POST /employees`
+
+Creates a new employee. `employeeCode` is always server-generated — the next
+`EMP-######` code after the current highest one — and any value supplied by
+the client for it is ignored.
+
+Request body:
+
+```json
+{
+  "name": "Ada Lovelace",
+  "department": "Engineering",
+  "country": "United Kingdom",
+  "currencyCode": "GBP",
+  "salaryAmount": 85000,
+  "joinedAt": "2024-01-15"
+}
+```
+
+`name`/`department`/`country` are required non-empty strings, `currencyCode`
+must be a known key in `config/currencyRates.ts`, `salaryAmount` must be a
+positive integer, and `joinedAt` must be a parseable date string. Validation
+failures return `400` with per-field messages:
+
+```json
+{ "errors": { "salaryAmount": "Salary amount must be greater than zero" } }
+```
+
+A valid request returns `201` with the created employee, including its
+generated `employeeCode`.
+
+### `GET /config/currencies`
+
+Static reference data for the create-employee form: every known currency
+code and a default currency per country. Not derived from employee
+records — unlike `/employees/filters`, this doesn't change as employees are
+added or removed. No query params.
+
+```bash
+curl "http://localhost:3000/config/currencies"
+```
+
+```json
+{
+  "currencies": ["USD", "GBP", "EUR", "INR", "CAD", "AUD"],
+  "countryCurrencyDefaults": {
+    "United States": "USD",
+    "United Kingdom": "GBP",
+    "Germany": "EUR",
+    "India": "INR",
+    "Canada": "CAD",
+    "Australia": "AUD"
+  }
+}
+```
+
 Other backend scripts:
 
 ```bash
@@ -121,6 +177,11 @@ npm run dev            # starts the app on http://localhost:5173
 The employee list screen has department and country filter dropdowns next to
 the search box, populated from `GET /employees/filters`. Each defaults to
 "All Departments"/"All Countries" and combines with search via AND.
+
+An "Add Employee" button above the table opens a create form (department/
+country/currency populated from `GET /employees/filters` and
+`GET /config/currencies`). Selecting a country auto-fills a suggested
+currency but never locks the field — see `ARCHITECTURE.md` for why.
 
 Other frontend scripts:
 

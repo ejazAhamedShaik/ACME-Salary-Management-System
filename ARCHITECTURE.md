@@ -165,3 +165,110 @@ matching row.
 either the frontend or backend — simpler and marginally faster (no query),
 but only correct as long as the dataset never changes, which doesn't hold
 once create/delete ships.
+
+## 9. Country→currency defaulting is a suggestion, never a constraint
+
+**What we chose:** Selecting a country in the create-employee form
+auto-populates the currency field with that country's default currency
+(`GET /config/currencies`'s `countryCurrencyDefaults`), but the currency
+`Select` stays fully editable afterward — never disabled, and the backend's
+Zod validation never restricts `currencyCode` to match `country`.
+
+**Why:** Real HR pay arrangements sometimes diverge from a country's local
+currency — expats paid in their home currency, contracts denominated in
+USD/EUR regardless of work location, and similar cases. Locking the field
+once a country is chosen would misrepresent that reality and block a
+legitimate entry. The default exists purely to save a click in the common
+case, not to encode a business rule that doesn't actually hold.
+
+**What we rejected:** Disabling/locking the currency field once a default
+is applied, or validating `currencyCode` against `country` server-side —
+both would incorrectly treat "usual" as "required."
+
+## 10. Currency config served via a backend endpoint, not a frontend-hardcoded list
+
+**What we chose:** `GET /config/currencies` (backed by
+`backend/src/config/currencyRates.ts` and the new sibling
+`countryCurrencyDefaults.ts`) is the single source of truth for both the
+list of valid currency codes and the country→currency default mapping. The
+frontend fetches it (`useCurrencyConfig`, `staleTime: Infinity` — this is
+static app config with no runtime mutation path, unlike
+`GET /employees/filters`) rather than shipping its own hardcoded copy.
+
+**Why:** A hardcoded frontend list and the backend's Zod-validated set of
+known currency codes are two things that would need to be kept in sync by
+hand on every change — exactly the two-files-drift risk decision 8 already
+rejected for department/country filter options, and the same reasoning
+applies here. Serving it from the backend means there's exactly one place
+that defines "what currencies exist" and "what a country's default is."
+
+**What we rejected:** A hardcoded `currencies`/`countryCurrencyDefaults`
+list duplicated in the frontend — simpler for a single static snapshot, but
+guaranteed to drift the moment either side is edited without the other.
+
+## 11. Shared, mode-driven `EmployeeForm`; Zod-mirrored client validation
+
+**What we chose:** `EmployeeForm` takes a `mode: 'create' | 'edit'`, an
+optional `initialValues`, and an `onSubmit` callback returning
+`Promise<void>` — no knowledge of `Modal` chrome or of how/where its data is
+persisted. Its public contract is entirely plain-string based
+(`initialValues.joinedAt` and the payload handed to `onSubmit` are both ISO
+date strings); the `DatePicker`'s `Dayjs` representation is an internal
+implementation detail converted at the component's boundary. Only `create`
+mode ships in this pass, via `CreateEmployeeModal`, a thin wrapper that owns
+the `useCreateEmployee` mutation and only mounts `EmployeeForm` (and its
+`useEmployeeFilters`/`useCurrencyConfig` queries) while the modal is open.
+
+**Why:** An edit flow is a clearly anticipated next step (see
+`REQUIREMENTS.md`'s "Create / edit employee"), and building the field
+list/validation/country-currency-defaulting logic once, parameterized by
+`mode`, avoids duplicating it later. Keeping the public contract
+string-based (not `Dayjs`-based) means a future `EditEmployeeModal` just
+passes a different `initialValues` object built from an `Employee` DTO,
+with no date-library leakage into `api/types.ts`.
+
+Client-side validation is intentionally **not** shared code with the
+backend's Zod schema — `CLAUDE.md`'s "no reaching into the other project's
+internals" rules out the frontend importing it, and it isn't installed
+there. "Zod-mirrored" means two independently maintained, intentionally
+matching validation definitions: Zod (`backend/src/validation/employeeValidation.ts`)
+is the source of truth for correctness, hand-written Ant Design `Form.Item`
+`rules` are the source of truth for immediate client-side feedback.
+
+**What we rejected:** Building `EmployeeForm` as create-only with no `mode`
+prop (would need a near-duplicate for edit later); sharing a validation
+schema across the HTTP boundary (not possible without violating the
+frontend/backend coupling rule, and not warranted at this scale of
+duplication — five simple rules).
+
+## 12. `employeeCode` generation: `MAX(numeric suffix) + 1`, not `COUNT(*)`
+
+**What we chose:** The next `employeeCode` is derived by parsing the numeric
+suffix out of every existing code, taking the maximum, and adding one
+(`backend/src/repositories/employeeRepository.ts`'s
+`findMaxEmployeeCodeNumber`), rather than counting existing rows.
+
+**Why:** `COUNT(*) + 1` breaks the moment a delete exists — deleting any
+employee except the most recently created one produces a `COUNT` that no
+longer matches the highest issued number, risking a collision with an
+existing `employeeCode` on the next create. `MAX(suffix) + 1` stays correct
+regardless of deletions, since it only cares about the highest number ever
+issued that's still present.
+
+**Concurrency trade-off, stated precisely:** `better-sqlite3` is a
+synchronous driver — `.all()`/`.get()`/`.run()` have no `await` point
+between them. Within a single Node process, nothing can interleave between
+one request's `findMaxEmployeeCodeNumber()` call and its `create()` call, so
+concurrent `POST /employees` requests against **one process** can never race
+on the max-lookup. The real risk is only a **multi-instance** deployment
+sharing one SQLite file, where two separate processes could both read the
+same `MAX` before either inserts. `employeeCode`'s `UNIQUE` constraint turns
+that scenario into a clean insert failure, not silent duplicate data — an
+acceptable, explicitly-documented trade-off for this demo-scale,
+single-instance app (consistent with decision 4's single-SQLite-file
+stance), not something worth building row-locking for.
+
+**What we rejected:** `COUNT(*) + 1` (breaks under delete); a UUID or
+similar opaque identifier instead of the sequential `EMP-######` format
+(would be a breaking API/data-format change with no benefit at this scale,
+and HR-facing employee codes are conventionally sequential and readable).

@@ -287,5 +287,118 @@ document filters endpoint, derived-options decision, and AI usage`.
 > [human note: ]
 > Service for department and countries was developed at /employees/filters route. 
 > Even though the seed data uses a fixed set of values, reason for deriving the list of departments and countries is to have the consistency between database and frontend view. It's because, if edit or delete happens and for any department or country employees and for that category if there is no data available then it'll be consistent between DB and frontend. This is why I am deriving these values fro DB. 
-> In frontend dropdowns were added for country and department filters and API integration is done to fetch the filter options and render the UI. 
+> In frontend dropdowns were added for country and department filters and API integration is done to fetch the filter options and render the UI.  
+
+## Entry 7 — GET /config/currencies, POST /employees, create-employee UI
+
+**What was asked:** Implement `GET /config/currencies` (static currency
+list + country→currency default mapping, built first since the create form
+depends on it), `POST /employees` with Zod validation and a
+server-generated `employeeCode` (never client-supplied), and a shared,
+mode-driven `EmployeeForm` + `CreateEmployeeModal` wired into the list
+screen via an "Add Employee" button. Department was resolved as a `Select`
+sourced from the existing `useEmployeeFilters` hook (symmetric with
+Country), and `seed.ts` was refactored to import the new shared
+country-currency config instead of keeping its own private copy, per two
+explicit decisions confirmed with the developer before building. Following
+TDD, split across 8 labeled commits.
+
+**What was generated:**
+- `backend/src/config/countryCurrencyDefaults.ts` (new, sibling to
+  `currencyRates.ts`), `backend/src/services/configService.ts`,
+  `backend/src/controllers/configController.ts`,
+  `backend/src/routes/configRoutes.ts` — mirrors the `/health` endpoint's
+  no-repository pattern, since this is static config with no DB access.
+  `backend/src/db/seed.ts`'s private `COUNTRIES` array now derives from the
+  shared config instead of duplicating it.
+- `backend/src/validation/employeeValidation.ts` (new) — Zod schema for
+  `POST /employees`, using only version-agnostic `.min()`/`.refine()` APIs
+  (zod resolved to `4.4.3`, installed fresh this pass).
+  `backend/src/repositories/employeeRepository.ts` —
+  `findMaxEmployeeCodeNumber()` (`MAX(CAST(SUBSTR(employee_code, 5) AS
+  INTEGER))`) and `create()`. `backend/src/services/employeeService.ts` —
+  `createEmployee`, computing the next `EMP-######` code from the
+  repository's max lookup. `backend/src/controllers/employeeController.ts` —
+  Zod `safeParse`, mapping failures to `{ errors: { field: message } }` via
+  `.flatten().fieldErrors`.
+- `backend/tests/config.test.ts` (2 scenarios) and
+  `backend/tests/createEmployee.test.ts` (7 scenarios, new files matching
+  this repo's one-file-per-concern test convention).
+- `frontend/src/api/config.ts` (`fetchCurrencyConfig`),
+  `frontend/src/hooks/useCurrencyConfig.ts` (`staleTime: Infinity` — static
+  config, no runtime mutation path, unlike `useEmployeeFilters`'s 5-minute
+  staleTime). `frontend/src/api/employees.ts` — `createEmployee`,
+  `ApiFieldError` (a typed `Error` subclass carrying `.errors`, thrown on a
+  400 response). `frontend/src/hooks/useCreateEmployee.ts` — `useMutation`,
+  invalidating the `["employees"]` query key prefix on success.
+- `frontend/src/components/EmployeeForm.tsx` (new) — all six fields,
+  country-selection auto-defaulting currency without disabling it,
+  AntD `Form.Item` rules mirroring the backend's Zod constraints, and an
+  `ApiFieldError` → `form.setFields` mapping for server-side 400s.
+  `frontend/src/components/CreateEmployeeModal.tsx` (new) — thin `Modal`
+  wrapper, only mounts `EmployeeForm` while open, closes only after
+  `mutateAsync` resolves without throwing.
+  `frontend/src/pages/EmployeeListPage.tsx` — "Add Employee" button and
+  modal-open state.
+- `frontend/tests/EmployeeForm.test.tsx` (5 scenarios),
+  `frontend/tests/CreateEmployeeModal.test.tsx` (3 scenarios — the 400/
+  success paths from the original spec, plus a Cancel/X-button test added
+  as real, previously-missing coverage), one new test in
+  `frontend/tests/EmployeeListPage.test.tsx`, and an `App.test.tsx` mock
+  update (the page now always mounts `useCreateEmployee`, even with the
+  modal closed).
+- Docs: README (new `POST /employees` and `GET /config/currencies`
+  sections, a frontend note on the "Add Employee" button), ARCHITECTURE.md
+  (entries 9–12: country-currency defaulting as suggestion-not-constraint,
+  currency config via a backend endpoint, the shared mode-driven form
+  design plus the Zod-mirrored-validation resolution, and the
+  `employeeCode` concurrency trade-off written out precisely), this file.
+
+**Files touched:** see the 8 commits — `chore: add zod for request
+validation`, `test: add failing tests for GET /config/currencies`, `feat:
+implement GET /config/currencies`, `test: add failing tests for POST
+/employees validation and creation`, `feat: implement POST /employees with
+zod validation and generated employee code`, `test: add failing tests for
+employee form, country-currency defaulting, and submission`, `feat:
+implement shared EmployeeForm and create employee modal`, `docs: document
+currency config endpoint, defaulting behavior, and form architecture`.
+
+**Process notes:**
+- Two test-infrastructure gaps surfaced only once the real components
+  rendered, both fixed as part of the frontend `feat` commit rather than
+  amending the already-committed `test` commit, per this repo's no-amend
+  convention: the three new `Select`s needed `virtual={false}` (same
+  `rc-select` duplicate-option issue hit previously for the filter
+  dropdowns), and the multi-field form-interaction tests needed a higher
+  global `testTimeout` to stay reliable under parallel test-worker
+  contention (individual runs took ~2–4s but crept past the 5s default
+  when several heavy AntD test files ran concurrently).
+- A TypeScript inference limitation surfaced in
+  `employeeController.ts`'s Zod-error formatter: a generic
+  `formatZodErrors<T>(error: ZodError<T>)` couldn't resolve
+  `Object.entries(error.flatten().fieldErrors)` against the abstract
+  mapped type, typing values as `{}`. Fixed with a direct, verified-safe
+  cast (`as Record<string, string[] | undefined>`) rather than fighting
+  the generic.
+- Verified end-to-end against the real dev server via the browser
+  extension: department/country/currency `Select`s populate from live
+  data, selecting a country correctly auto-defaults currency without
+  locking it, and submitting creates a real row with a correctly
+  incremented `employeeCode` (confirmed via direct `GET /employees` checks
+  after driving the actual rendered form, not just visual inspection). The
+  browser extension itself was unreliable for parts of this session
+  (a broken screenshot API, and click-by-element-reference calls that
+  silently failed to register — worked around with direct DOM/JS-driven
+  interaction instead) and, separately, a real modal-close symptom
+  appeared when clicking Cancel/the X button in the live browser. Rather
+  than trust one flaky manual session, a dedicated automated test was
+  written for that exact interaction (`user-event`-driven, in the
+  deterministic jsdom environment) — it passed cleanly and immediately,
+  which combined with the extension's other unrelated failures earlier in
+  the session, points to a browser-automation artifact rather than a real
+  app bug. Flagging this explicitly rather than asserting certainty either
+  way — worth a quick manual click-through in a normal browser tab to
+  fully close the loop.
+
+> [human note: ]
 
