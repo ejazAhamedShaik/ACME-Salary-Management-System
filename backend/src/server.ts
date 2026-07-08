@@ -13,6 +13,10 @@ import { createEmployeeRepository } from "./repositories/employeeRepository.js";
 import { createConfigController } from "./controllers/configController.js";
 import { createConfigRouter } from "./routes/configRoutes.js";
 import { createConfigService } from "./services/configService.js";
+import { createInsightsController } from "./controllers/insightsController.js";
+import { createInsightsRouter } from "./routes/insightsRoutes.js";
+import { createInsightsService } from "./services/insightsService.js";
+import { createInsightsRepository } from "./repositories/insightsRepository.js";
 import { bootstrap } from "./db/bootstrap.js";
 
 export function createApp(db: BetterSQLite3Database<Record<string, unknown>>) {
@@ -31,6 +35,11 @@ export function createApp(db: BetterSQLite3Database<Record<string, unknown>>) {
 
   const configRouter = createConfigRouter(createConfigController(createConfigService()));
   app.use("/config", configRouter);
+
+  const insightsRepository = createInsightsRepository(db);
+  const insightsService = createInsightsService(insightsRepository);
+  const insightsRouter = createInsightsRouter(createInsightsController(insightsService));
+  app.use("/insights", insightsRouter);
 
   return app;
 }
