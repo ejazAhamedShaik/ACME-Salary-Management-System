@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { EmployeeForm } from "../src/components/EmployeeForm";
 import { renderWithProviders } from "./testUtils";
@@ -34,6 +34,12 @@ async function selectOption(user: ReturnType<typeof userEvent.setup>, label: str
   await user.click(await screen.findByRole("option", { name: option }));
 }
 
+function getSelectedLabel(label: string): string | null {
+  const combobox = screen.getByLabelText(label);
+  const content = combobox.closest(".ant-select")?.querySelector(".ant-select-content");
+  return content?.getAttribute("title") ?? null;
+}
+
 describe("EmployeeForm", () => {
   it("populates the currency Select from the mocked config", async () => {
     renderWithProviders(<EmployeeForm mode="create" onSubmit={vi.fn()} />);
@@ -52,7 +58,7 @@ describe("EmployeeForm", () => {
     await selectOption(user, "Country", "India");
 
     await waitFor(() => {
-      expect(within(screen.getByLabelText("Currency")).queryByTitle("INR")).toBeInTheDocument();
+      expect(getSelectedLabel("Currency")).toBe("INR");
     });
   });
 
@@ -62,12 +68,12 @@ describe("EmployeeForm", () => {
 
     await selectOption(user, "Country", "India");
     await waitFor(() => {
-      expect(within(screen.getByLabelText("Currency")).queryByTitle("INR")).toBeInTheDocument();
+      expect(getSelectedLabel("Currency")).toBe("INR");
     });
 
     await selectOption(user, "Currency", "USD");
 
-    expect(within(screen.getByLabelText("Currency")).queryByTitle("USD")).toBeInTheDocument();
+    expect(getSelectedLabel("Currency")).toBe("USD");
   });
 
   it("calls onSubmit with the exact payload shape, no employeeCode", async () => {

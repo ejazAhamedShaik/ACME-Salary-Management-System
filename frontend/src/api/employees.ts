@@ -48,6 +48,31 @@ export async function fetchEmployeeFilters(): Promise<EmployeeFilters> {
   return response.json() as Promise<EmployeeFilters>;
 }
 
+export class ApiFieldError extends Error {
+  errors: Record<string, string>;
+
+  constructor(errors: Record<string, string>) {
+    super("Request validation failed");
+    this.name = "ApiFieldError";
+    this.errors = errors;
+  }
+}
+
 export async function createEmployee(payload: CreateEmployeePayload): Promise<Employee> {
-  throw new Error("not implemented");
+  const response = await fetch(`${API_BASE_URL}/employees`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (response.status === 400) {
+    const body = (await response.json()) as { errors: Record<string, string> };
+    throw new ApiFieldError(body.errors);
+  }
+
+  if (!response.ok) {
+    throw new Error(`Failed to create employee: ${response.status}`);
+  }
+
+  return response.json() as Promise<Employee>;
 }

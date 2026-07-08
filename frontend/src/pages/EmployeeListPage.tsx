@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { Alert, Empty, Flex, Input, Select, Space } from "antd";
+import { Alert, Button, Empty, Flex, Input, Select, Space } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import { EmployeeTable } from "../components/EmployeeTable";
+import { CreateEmployeeModal } from "../components/CreateEmployeeModal";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useEmployeeFilters } from "../hooks/useEmployeeFilters";
 import { useEmployees } from "../hooks/useEmployees";
@@ -14,6 +16,7 @@ export function EmployeeListPage() {
   const [searchInput, setSearchInput] = useState("");
   const [department, setDepartment] = useState("");
   const [country, setCountry] = useState("");
+  const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const debouncedSearch = useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS);
 
   const filtersQuery = useEmployeeFilters();
@@ -81,7 +84,12 @@ export function EmployeeListPage() {
             />
           </div>
         </Space>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)}>
+          Add Employee
+        </Button>
       </Flex>
+
+      <CreateEmployeeModal open={isCreateModalOpen} onClose={() => setCreateModalOpen(false)} />
 
       {query.isError ? (
         <Alert type="error" showIcon message="Couldn't load employees. Please try again." />

@@ -75,4 +75,14 @@ describe("CreateEmployeeModal", () => {
 
     await waitFor(() => expect(handleClose).toHaveBeenCalled());
   });
+
+  it("calls onClose when the modal's close (X) button is clicked", async () => {
+    const handleClose = vi.fn();
+    const user = userEvent.setup();
+    renderWithProviders(<CreateEmployeeModal open onClose={handleClose} />);
+
+    await user.click(screen.getByRole("button", { name: "Close" }));
+
+    expect(handleClose).toHaveBeenCalled();
+  });
 });
