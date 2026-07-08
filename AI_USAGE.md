@@ -507,5 +507,7 @@ and salary-reset behavior`.
   real issue with the suite or this feature's code.
 
 > [human note: ]
-
-
+> Employee edit flow is implemented through PATCH /employees/:id. Using Zod all request-body validations are being done. Department/country/name must not be empty. If current code is present then it should be a key in config/currencyRates.ts, if salary is available then it should be a positive value. 
+> In frontend same create employee record modal is reused for edit as well. 
+> When country is updated then currency will also be changed and salary is set to 0. 
+> Filing tests were written for both FE and BE and then code was written to achieve the green flag for all the test cases. 
