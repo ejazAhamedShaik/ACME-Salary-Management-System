@@ -10,8 +10,19 @@ export interface SalaryGroup {
   count: number;
 }
 
+export interface OutlierEmployeeRow {
+  id: number;
+  employeeCode: string;
+  name: string;
+  department: string;
+  country: string;
+  currencyCode: string;
+  salaryAmount: number;
+}
+
 export interface InsightsRepository {
   findSalaryGroups(): SalaryGroup[];
+  findEmployeesForOutliers(): OutlierEmployeeRow[];
 }
 
 export function createInsightsRepository(
@@ -29,6 +40,21 @@ export function createInsightsRepository(
         })
         .from(employees)
         .groupBy(employees.department, employees.country, employees.currencyCode)
+        .all();
+    },
+
+    findEmployeesForOutliers() {
+      return db
+        .select({
+          id: employees.id,
+          employeeCode: employees.employeeCode,
+          name: employees.name,
+          department: employees.department,
+          country: employees.country,
+          currencyCode: employees.currencyCode,
+          salaryAmount: employees.salaryAmount,
+        })
+        .from(employees)
         .all();
     },
   };

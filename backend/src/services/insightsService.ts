@@ -10,8 +10,29 @@ export interface InsightsSummary {
   headcountByCountry: Record<string, number>;
 }
 
+export interface OutlierEmployee {
+  id: number;
+  employeeCode: string;
+  name: string;
+  country: string;
+  currencyCode: string;
+  salaryAmount: number;
+  salaryUSD: number;
+}
+
+export interface DepartmentOutlier {
+  department: string;
+  highest: OutlierEmployee;
+  lowest: OutlierEmployee;
+}
+
+export interface InsightsOutliers {
+  outliersByDepartment: DepartmentOutlier[];
+}
+
 export interface InsightsService {
   getSummary(): InsightsSummary;
+  getOutliers(): InsightsOutliers;
 }
 
 function roundValues(record: Record<string, number>): Record<string, number> {
@@ -82,6 +103,46 @@ export function createInsightsService(repository: InsightsRepository): InsightsS
         headcountByDepartment,
         headcountByCountry,
       };
+    },
+
+    getOutliers() {
+      const rows = repository.findEmployeesForOutliers();
+      const byDepartment = new Map<string, OutlierEmployee[]>();
+
+      for (const row of rows) {
+        const salaryUSD = convertToUSD(row.salaryAmount, row.currencyCode);
+        if (salaryUSD === null) {
+          continue;
+        }
+
+        const employee: OutlierEmployee = {
+          id: row.id,
+          employeeCode: row.employeeCode,
+          name: row.name,
+          country: row.country,
+          currencyCode: row.currencyCode,
+          salaryAmount: row.salaryAmount,
+          salaryUSD: Math.round(salaryUSD),
+        };
+
+        const departmentEmployees = byDepartment.get(row.department) ?? [];
+        departmentEmployees.push(employee);
+        byDepartment.set(row.department, departmentEmployees);
+      }
+
+      const outliersByDepartment = [...byDepartment.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([department, departmentEmployees]) => ({
+          department,
+          highest: departmentEmployees.reduce((max, employee) =>
+            employee.salaryUSD > max.salaryUSD ? employee : max,
+          ),
+          lowest: departmentEmployees.reduce((min, employee) =>
+            employee.salaryUSD < min.salaryUSD ? employee : min,
+          ),
+        }));
+
+      return { outliersByDepartment };
     },
   };
 }
