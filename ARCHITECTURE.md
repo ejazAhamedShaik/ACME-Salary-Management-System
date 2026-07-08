@@ -272,3 +272,73 @@ stance), not something worth building row-locking for.
 similar opaque identifier instead of the sequential `EMP-######` format
 (would be a breaking API/data-format change with no benefit at this scale,
 and HR-facing employee codes are conventionally sequential and readable).
+
+## 13. Partial-update semantics via `.partial()`, existence check folded into the UPDATE
+
+**What we chose:** `PATCH /employees/:id`'s validation is
+`createEmployeeSchema.partial()` — every field becomes optional while
+keeping each field's original validator active when present. "Not found" is
+signaled by the repository's `UPDATE ... WHERE id = ?` matching zero rows
+(Drizzle's `.get()` returns `undefined` in that case), not a separate
+existence lookup before the update runs.
+
+**Why:** `.partial()` gives exactly the "any subset, but present fields
+still validated" contract with zero new validation code — no hand-written
+"is this field present, and if so is it valid" branching to get wrong.
+Folding the existence check into the UPDATE itself avoids a redundant
+`SELECT` before every write; the database already tells us whether a row
+existed by whether it matched.
+
+**What we rejected:** A separate Zod schema hand-written for updates
+(duplicates every rule `createEmployeeSchema` already encodes, with no
+behavioral difference from `.partial()`); a `findById` existence check
+before the `UPDATE` (a second query for information the `UPDATE`'s own
+result already gives us for free).
+
+## 14. Prefill from already-fetched table data — no `GET /employees/:id`
+
+**What we chose:** Clicking Edit on a table row passes that row's data
+(already present in the list query's cache) directly into `EmployeeForm`'s
+`initialValues`. There is no `GET /employees/:id` endpoint.
+
+**Why:** The table already holds every field the edit form needs — a
+dedicated fetch-by-id endpoint would exist purely to re-fetch data the
+client already has, adding a network round-trip (and a brief loading state
+in the modal) for no new information. It also introduces a staleness risk
+a prefill-from-cache approach doesn't have: the row could change between
+the table loading and the modal opening, and a fresh fetch wouldn't close
+that window either (another request could race it) — it would just move
+the risk around while adding latency, not remove it.
+
+**What we rejected:** A `GET /employees/:id` endpoint fetched on Edit-click,
+which is the more "RESTful-by-the-book" shape but solves a problem this app
+doesn't have at this scale (10,000 rows, single HR-manager user, no
+real-time collaboration to make staleness a meaningful concern).
+
+## 15. Salary-reset-on-currency-change is frontend-only, never enforced server-side
+
+**What we chose:** When editing an employee, changing the currency (directly
+or via a country change cascading a new default) clears the `salaryAmount`
+field client-side, once per edit session, with a placeholder naming the new
+currency. `PATCH /employees/:id` itself places no constraint between
+`currencyCode` and `salaryAmount` — any valid combination is accepted,
+identical to `POST`.
+
+**Why:** This is a data-entry safety nudge — stopping someone from
+accidentally submitting a salary number that was correct under the old
+currency but now reads as a wildly wrong amount under the new one — not a
+business rule. It's consistent with decision 9 (currency is a suggestion,
+never a constraint): the backend has no opinion on which currency a salary
+figure is denominated in, so it has nothing to validate here either.
+
+**What we rejected:** Server-side enforcement requiring `salaryAmount` to
+be re-submitted whenever `currencyCode` changes — would conflate a UX
+safeguard with a data-integrity rule the domain doesn't actually have.
+
+**No-restore-on-toggle-back, a deliberate simplification:** once cleared,
+the salary field never repopulates automatically, even if the currency is
+changed back to the record's original value. Restoring it correctly would
+mean caching the pre-clear number through arbitrary further edits and only
+re-showing it on an exact currency match — real state to build and maintain
+for a rare path (changing currency more than once in a single edit
+session), not worth it here.

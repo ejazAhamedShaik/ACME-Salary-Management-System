@@ -130,6 +130,28 @@ failures return `400` with per-field messages:
 A valid request returns `201` with the created employee, including its
 generated `employeeCode`.
 
+### `PATCH /employees/:id`
+
+Updates an existing employee. Body is any subset of the `POST /employees`
+fields — only the fields present are validated and applied; everything else
+is left unchanged. `employeeCode`/`id`, if sent, are ignored, same as `POST`.
+
+```json
+{ "department": "Finance", "salaryAmount": 95000 }
+```
+
+Each present field follows the same validation as `POST`. Validation
+failures return `400` with the same per-field error shape. A non-existent
+`:id` returns `404`. A successful request returns `200` with the full
+updated employee record — including an empty body `{}`, which is a valid
+no-op update that returns the record unchanged.
+
+```bash
+curl -X PATCH "http://localhost:3000/employees/1" \
+  -H "Content-Type: application/json" \
+  -d '{"department": "Finance"}'
+```
+
 ### `GET /config/currencies`
 
 Static reference data for the create-employee form: every known currency
@@ -182,6 +204,14 @@ An "Add Employee" button above the table opens a create form (department/
 country/currency populated from `GET /employees/filters` and
 `GET /config/currencies`). Selecting a country auto-fills a suggested
 currency but never locks the field — see `ARCHITECTURE.md` for why.
+
+Each table row has an Edit action that opens the same form pre-filled from
+that row's already-fetched data (no extra fetch). Only the fields you
+actually change are sent to the server. Changing the currency (directly, or
+via a country change that cascades a new default) clears the salary field
+once, with a placeholder reminding you to re-enter it in the new currency —
+see `ARCHITECTURE.md` for why this is a frontend-only nudge, not enforced
+server-side.
 
 Other frontend scripts:
 

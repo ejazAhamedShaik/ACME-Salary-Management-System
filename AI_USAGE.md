@@ -406,4 +406,106 @@ currency config endpoint, defaulting behavior, and form architecture`.
 > In frontend created a form in a modal to add new employee. Employee code creation will handled by BE and HR have to add mandatory fields like name, country, department, salary and date of joining. Currency will be auto populated when country is selected but it'll be editable. 
 > On successful addition, a notification/toast will be shown to the user confirming that user is added successfully. 
 
+## Entry 8 — PATCH /employees/:id and edit-employee UI
+
+**What was asked:** Implement `PATCH /employees/:id` accepting a partial
+update (any subset of the create fields, only present fields validated and
+applied, `employeeCode`/`id` ignored if sent), and an edit-employee UI
+reusing `EmployeeForm` in `mode="edit"` via a new `EditEmployeeModal`,
+prefilling from already-fetched table data rather than a new fetch, sending
+only changed fields on submit, and clearing the salary field once when the
+currency changes (directly or via a cascaded country default), never
+restoring it if changed back. Following TDD, split across 5 labeled
+commits.
+
+**What was generated:**
+- `backend/src/validation/employeeValidation.ts` —
+  `updateEmployeeSchema = createEmployeeSchema.partial()`.
+  `backend/src/repositories/employeeRepository.ts` — `update(id, row)`,
+  using the UPDATE's own zero-rows-matched result as the "not found"
+  signal (no separate existence lookup), with a guard returning the
+  unchanged record via a plain `select` when the update row is empty
+  (Drizzle throws on `db.update(...).set({})`, verified directly against
+  the runtime, not assumed from docs — an empty `PATCH` body needed this
+  guard or it would 500).
+  `backend/src/services/employeeService.ts` — `updateEmployee`, building
+  the update row field-by-field (only assigning present keys) and mapping
+  back to the same `EmployeeDto` shape as `createEmployee`.
+  `backend/src/controllers/employeeController.ts` — `updateEmployee`,
+  reusing the existing `formatZodErrors` helper as-is; a malformed/
+  non-numeric `:id` returns 404 before body validation even runs.
+  `backend/src/routes/employeeRoutes.ts` — `PATCH /:id` on the existing
+  employee router.
+- `backend/tests/updateEmployee.test.ts` (new, 7 scenarios: single-field
+  update, multi-field update, invalid currencyCode/salaryAmount → 400 with
+  the record unchanged, non-existent id → 404, employeeCode/id ignored,
+  and an empty body → 200 no-op).
+- `frontend/src/api/types.ts` (`UpdateEmployeePayload`),
+  `frontend/src/api/employees.ts` (`updateEmployee`, mirroring
+  `createEmployee`'s 400-handling exactly),
+  `frontend/src/hooks/useUpdateEmployee.ts` (new, same
+  mutate-then-invalidate pattern as `useCreateEmployee`).
+- `frontend/src/components/EmployeeForm.tsx` — the salary-reset state
+  machine: a `salaryCleared` flag (starts fresh every mount, which happens
+  every time the edit modal opens) and a ref capturing the record's
+  original currency on mount; a shared check invoked from both the
+  currency `Select`'s new `onChange` and the existing country-cascaded
+  currency-default path (since `form.setFieldValue` doesn't fire a
+  `Select`'s own `onChange`, both call sites need it explicitly); a
+  currency-aware placeholder once cleared, via `Form.useWatch`.
+- `frontend/src/components/EditEmployeeModal.tsx` (new) — diffs the
+  submitted values against the original `Employee` prop field-by-field
+  (normalizing `joinedAt` through the same `dayjs(...).format("YYYY-MM-DD")`
+  `EmployeeForm` uses internally, since the `Employee` DTO's `joinedAt` is
+  a full ISO datetime but the form submits a date-only string), sends only
+  the diff, and short-circuits to `onClose()` with no API call at all when
+  nothing changed.
+  `frontend/src/components/EmployeeTable.tsx` — `columns` moved from a
+  module-level const to a function closing over a new `onEdit` prop, adding
+  an Actions column with an icon-only, `aria-label`'d Edit button per row.
+  `frontend/src/pages/EmployeeListPage.tsx` — a single
+  `editingEmployee: Employee | null` state (not a separate open-boolean —
+  "modal open" and "an employee is selected" never diverge in this
+  feature) driving the new modal.
+- `frontend/tests/EmployeeForm.test.tsx` (4 new edit-mode scenarios),
+  `frontend/tests/EditEmployeeModal.test.tsx` (new, 3 scenarios: prefill
+  with no list re-fetch, diff-only submission, 400 field-error surfacing),
+  plus `updateEmployee: vi.fn()` added to the existing mock factories in
+  `EmployeeListPage.test.tsx`/`App.test.tsx` (both files mount the new
+  modal, and therefore `useUpdateEmployee`, unconditionally regardless of
+  open state — the same reason `createEmployee` was already mocked there).
+- Docs: README (`PATCH /employees/:id` section, an edit-action note in the
+  frontend section), ARCHITECTURE.md (entries 13–15: partial-update
+  semantics and the folded-in existence check, prefill-from-table-data and
+  why no `GET /employees/:id`, and salary-reset as a frontend-only nudge
+  with the no-restore-on-toggle-back simplification), this file.
+
+**Files touched:** see the 5 commits — `test: add failing tests for PATCH
+/employees/:id partial update and validation`, `feat: implement PATCH
+/employees/:id`, `test: add failing tests for edit modal prefill and
+currency-triggered salary reset`, `feat: implement edit employee modal
+reusing EmployeeForm`, `docs: document PATCH semantics, prefill decision,
+and salary-reset behavior`.
+
+**Process notes:**
+- Two backend edge cases weren't in the task's 6 specified test scenarios
+  and were resolved by directly tracing Drizzle's runtime behavior rather
+  than guessing: `db.update(employees).set({})` throws `"No values to
+  set"` (confirmed via a throwaway script against a real in-memory db,
+  then deleted) — handled with the empty-row guard described above, plus
+  a 7th test case; and a malformed `:id` needed an explicit decision
+  (resolved as 404-before-validation, mirroring this controller's existing
+  `parsePage`/`parsePageSize` philosophy of never surfacing malformed
+  input as a client-facing validation error).
+- The frontend test suite was flaky under heavy, unrelated system load
+  partway through this session (multiple concurrent Claude Code sessions
+  and a heavy Chrome process competing for CPU) — a run that had passed
+  cleanly minutes earlier started timing out across totally unrelated
+  test files. Re-ran with `--fileParallelism=false` to get a clean,
+  trustworthy confirmation without changing the project's actual test
+  config for what was a transient, session-specific resource spike, not a
+  real issue with the suite or this feature's code.
+
+> [human note: ]
+
 
