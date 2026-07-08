@@ -63,3 +63,7 @@ separately in `ARCHITECTURE.md`.
 - **Employee search covers employee code, not just name.** HR looks people up
   by employee code/ID as often as by name, so the directory's search matches
   a partial, case-insensitive substring of either.
+- **Employee removal is in scope, as a hard delete with no audit trail.**
+  Consistent with salary history already being out of scope (see "Deliberately
+  Out of Scope"), a removed employee's record is actually deleted, not flagged
+  or versioned — there is no recovery or undo after the fact.

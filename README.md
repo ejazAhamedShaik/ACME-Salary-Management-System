@@ -152,6 +152,17 @@ curl -X PATCH "http://localhost:3000/employees/1" \
   -d '{"department": "Finance"}'
 ```
 
+### `DELETE /employees/:id`
+
+Permanently removes an employee — a hard delete, no soft-delete flag, no
+recovery after the fact. `:id` must parse as a positive integer, or the
+request returns `400`. A non-existent `:id` returns `404`. A successful
+delete returns `204 No Content`.
+
+```bash
+curl -X DELETE "http://localhost:3000/employees/1"
+```
+
 ### `GET /config/currencies`
 
 Static reference data for the create-employee form: every known currency
@@ -212,6 +223,10 @@ via a country change that cascades a new default) clears the salary field
 once, with a placeholder reminding you to re-enter it in the new currency —
 see `ARCHITECTURE.md` for why this is a frontend-only nudge, not enforced
 server-side.
+
+Each row also has a Delete action, guarded by a confirmation prompt — the
+delete only fires once you explicitly confirm it, never on the icon click
+alone. Deleting the last row on a page automatically returns you to page 1.
 
 Other frontend scripts:
 

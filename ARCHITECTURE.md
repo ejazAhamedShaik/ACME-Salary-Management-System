@@ -342,3 +342,34 @@ mean caching the pre-clear number through arbitrary further edits and only
 re-showing it on an exact currency match — real state to build and maintain
 for a rare path (changing currency more than once in a single edit
 session), not worth it here.
+
+## 16. Hard delete over soft delete
+
+**What we chose:** `DELETE /employees/:id` actually removes the row —
+`DELETE FROM employees WHERE id = ?` — rather than setting a `deletedAt`/
+`isDeleted` flag and filtering it out of subsequent queries.
+
+**Why:** Soft delete exists to support things this app deliberately doesn't
+do: recovering an accidental deletion, auditing who removed what and when,
+or keeping historical records for compliance/reporting. Salary history
+itself is already out of scope (see `REQUIREMENTS.md`'s "Deliberately Out
+of Scope") — a versioned or recoverable employee record would be
+inconsistent with that stance, adding real complexity (a `deletedAt`
+column, `WHERE deletedAt IS NULL` on every existing query, a way to
+eventually purge or restore) in service of a recovery guarantee nothing
+else in this app provides. A hard delete keeps `GET /employees`,
+`/employees/filters`, and the `employeeCode` generation's `MAX`-lookup all
+working against the same simple, single table with no filtering
+convention to remember or forget.
+
+**What we rejected:** A soft-delete flag with an undo window — the more
+common production pattern, and worth revisiting if audit/recovery ever
+enters scope (see decision 12's `employeeCode`-gap handling either way),
+but not justified for a demo-scale, single-user tool that already excludes
+salary history for the same underlying reason.
+
+This closes out the CRUD set for `/employees` — create (`POST`), read
+(`GET`, `GET .../filters`), update (`PATCH`), delete (`DELETE`) all follow
+the same route → controller → service → repository layering, the same
+in-memory-db test pattern, and the same `{ errors: { field: message } }`
+error shape wherever validation applies.

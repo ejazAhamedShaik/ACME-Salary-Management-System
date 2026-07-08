@@ -510,4 +510,85 @@ and salary-reset behavior`.
 > Employee edit flow is implemented through PATCH /employees/:id. Using Zod all request-body validations are being done. Department/country/name must not be empty. If current code is present then it should be a key in config/currencyRates.ts, if salary is available then it should be a positive value. 
 > In frontend same create employee record modal is reused for edit as well. 
 > When country is updated then currency will also be changed and salary is set to 0. 
-> Filing tests were written for both FE and BE and then code was written to achieve the green flag for all the test cases. 
+> Filing tests were written for both FE and BE and then code was written to achieve the green flag for all the test cases.
+
+## Entry 9 — DELETE /employees/:id and delete UI
+
+**What was asked:** Implement `DELETE /employees/:id` as a hard delete (400
+for a malformed/non-positive `:id`, 404 for a non-existent one, 204 with no
+body on success), and a delete action in the employee table guarded by an
+explicit confirmation — the delete never fires on the icon click alone.
+After a successful delete, if the current page's results come back empty
+on refetch and the user isn't on page 1, the view resets to page 1.
+Following TDD, split across 5 labeled commits. This closes out the CRUD set
+for `/employees` (create/read/update/delete).
+
+**What was generated:**
+- `backend/src/repositories/employeeRepository.ts` — `delete(id)`, using
+  the `DELETE`'s own affected-row count (`result.changes > 0`, verified
+  directly against the runtime rather than assumed) as the found/not-found
+  signal — same folded-in-existence-check pattern as `update`.
+  `backend/src/services/employeeService.ts` — `deleteEmployee`, a thin
+  passthrough. `backend/src/controllers/employeeController.ts` —
+  `deleteEmployee`, parsing `:id` as a positive integer and returning `400`
+  with a structured `{ errors: { id: "..." } }` if it isn't — a
+  deliberately different choice from `PATCH`'s malformed-`:id`-as-404
+  handling, since this endpoint's contract explicitly calls for `400` here
+  and there's no sensible "coerce to a default" for a resource about to be
+  irreversibly removed. `backend/src/routes/employeeRoutes.ts` —
+  `DELETE /:id` on the existing employee router.
+- `backend/tests/deleteEmployee.test.ts` (new, 5 scenarios, including a
+  regression check seeding three sequential employeeCodes, deleting the
+  *middle* one to leave a real gap, then confirming a new create still
+  produces a non-colliding code — validating decision 12's `MAX`-based
+  generation, not just re-testing that a delete succeeded).
+- `frontend/src/api/employees.ts` (`deleteEmployee`, no body to parse on a
+  204 response), `frontend/src/hooks/useDeleteEmployee.ts` (new, same
+  mutate-then-invalidate pattern as create/update).
+- `frontend/src/components/EmployeeTable.tsx` — a Delete button in the
+  existing Actions column, wrapped in an Ant Design `Popconfirm`; the
+  component stays purely presentational (no hooks of its own), receiving
+  a new `onDelete` prop rather than owning the mutation itself.
+  `frontend/src/pages/EmployeeListPage.tsx` — `useDeleteEmployee` and a
+  general page-underflow guard (settled query, empty data, `page > 1` →
+  reset to `1`) rather than delete-specific handling threaded through the
+  mutation callback, since that's the only realistic way to end up on a
+  later page with an empty result once search/filter changes already
+  reset the page proactively on their own.
+- `frontend/tests/EmployeeTable.test.tsx` (new — no API mocking needed at
+  all, since the component takes plain props: confirms Delete doesn't
+  fire immediately, confirms it fires on Popconfirm confirmation, confirms
+  cancelling fires nothing), one new `EmployeeListPage` scenario (delete
+  the last row on page 2, refetch comes back empty, page resets to 1), and
+  a `deleteEmployee: vi.fn()` addition to `App.test.tsx`'s mock factory
+  (`EmployeeListPage` now calls `useDeleteEmployee` unconditionally on
+  mount, same reason `createEmployee`/`updateEmployee` needed mocking
+  there already).
+- Docs: `REQUIREMENTS.md` — a new Amendments entry recording that employee
+  removal (hard delete, no audit trail) is in scope; this was flagged to
+  the developer rather than assumed, since the task described this
+  amendment as already existing but it didn't (same situation, and same
+  resolution, as Entry 5's employee-code-search amendment). README (new
+  `DELETE /employees/:id` section, a delete-action note in the frontend
+  section). ARCHITECTURE.md (entry 16: hard delete over soft delete, and
+  why, closing out the CRUD-layering note), this file.
+
+**Files touched:** see the 5 commits — `test: add failing tests for DELETE
+/employees/:id`, `feat: implement DELETE /employees/:id`, `test: add
+failing tests for delete confirmation flow and page-reset-on-empty`,
+`feat: implement delete UI with confirmation and page-reset handling`,
+`docs: document hard-delete decision in ARCHITECTURE.md`.
+
+**Process notes:**
+- Verified `db.delete(employees).where(...).run()`'s return shape directly
+  (`{ changes, lastInsertRowid }`) against a real in-memory db before
+  relying on `changes > 0` as the not-found signal, rather than assuming
+  it from Drizzle's types — the same verify-don't-assume approach already
+  used for `PATCH`'s empty-`set()` behavior in Entry 8.
+- The task described `REQUIREMENTS.md` as already amended to bring
+  employee removal into scope; it wasn't. Flagged to the developer before
+  writing the amendment, per `CLAUDE.md`'s "never edit scope silently"
+  rule — confirmed to proceed, then added it as part of this pass's docs
+  commit.
+
+> [human note: ] 
