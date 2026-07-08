@@ -116,4 +116,79 @@ describe("EmployeeForm", () => {
     expect(await screen.findByText("Name is required")).toBeInTheDocument();
     expect(handleSubmit).not.toHaveBeenCalled();
   });
+
+  describe("edit mode salary reset", () => {
+    const initialValues = {
+      name: "Ada Lovelace",
+      department: "Engineering",
+      country: "India",
+      currencyCode: "INR",
+      salaryAmount: 85_000,
+      joinedAt: "2024-01-15",
+    };
+
+    it("clears salary when country changes to one with a different mapped currency", async () => {
+      renderWithProviders(
+        <EmployeeForm mode="edit" initialValues={initialValues} onSubmit={vi.fn()} />,
+      );
+      const user = userEvent.setup();
+
+      await selectOption(user, "Country", "Germany");
+
+      await waitFor(() => {
+        expect(getSelectedLabel("Currency")).toBe("EUR");
+        expect((screen.getByLabelText("Salary Amount") as HTMLInputElement).value).toBe("");
+      });
+    });
+
+    it("does not clear salary when country changes to one with the same mapped currency", async () => {
+      fetchEmployeeFiltersMock.mockResolvedValue({
+        departments: ["Engineering", "Finance"],
+        countries: ["India", "Germany", "Nepal"],
+      });
+      fetchCurrencyConfigMock.mockResolvedValue({
+        currencies: ["USD", "INR", "EUR"],
+        countryCurrencyDefaults: { India: "INR", Germany: "EUR", Nepal: "INR" },
+      });
+      renderWithProviders(
+        <EmployeeForm mode="edit" initialValues={initialValues} onSubmit={vi.fn()} />,
+      );
+      const user = userEvent.setup();
+      const salaryInput = screen.getByLabelText("Salary Amount") as HTMLInputElement;
+      const originalValue = salaryInput.value;
+
+      await selectOption(user, "Country", "Nepal");
+
+      await waitFor(() => expect(getSelectedLabel("Currency")).toBe("INR"));
+      expect(salaryInput.value).toBe(originalValue);
+    });
+
+    it("clears salary when currency is changed directly, and shows a currency-specific placeholder", async () => {
+      renderWithProviders(
+        <EmployeeForm mode="edit" initialValues={initialValues} onSubmit={vi.fn()} />,
+      );
+      const user = userEvent.setup();
+
+      await selectOption(user, "Currency", "USD");
+
+      await waitFor(() => {
+        expect(getSelectedLabel("Currency")).toBe("USD");
+        expect((screen.getByLabelText("Salary Amount") as HTMLInputElement).value).toBe("");
+        expect(screen.getByPlaceholderText("Enter salary in USD")).toBeInTheDocument();
+      });
+    });
+
+    it("does not clear salary when only an unrelated field changes", async () => {
+      renderWithProviders(
+        <EmployeeForm mode="edit" initialValues={initialValues} onSubmit={vi.fn()} />,
+      );
+      const user = userEvent.setup();
+      const salaryInput = screen.getByLabelText("Salary Amount") as HTMLInputElement;
+      const originalValue = salaryInput.value;
+
+      await selectOption(user, "Department", "Finance");
+
+      expect(salaryInput.value).toBe(originalValue);
+    });
+  });
 });
