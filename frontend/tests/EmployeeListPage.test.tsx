@@ -3,7 +3,7 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { EmployeeListPage } from "../src/pages/EmployeeListPage";
 import { renderWithProviders } from "./testUtils";
-import { fetchEmployeeFilters, fetchEmployees } from "../src/api/employees";
+import { deleteEmployee, fetchEmployeeFilters, fetchEmployees } from "../src/api/employees";
 import { fetchCurrencyConfig } from "../src/api/config";
 
 vi.mock("../src/api/employees", () => ({
@@ -11,12 +11,14 @@ vi.mock("../src/api/employees", () => ({
   fetchEmployeeFilters: vi.fn(),
   createEmployee: vi.fn(),
   updateEmployee: vi.fn(),
+  deleteEmployee: vi.fn(),
 }));
 vi.mock("../src/api/config", () => ({ fetchCurrencyConfig: vi.fn() }));
 
 const fetchEmployeesMock = vi.mocked(fetchEmployees);
 const fetchEmployeeFiltersMock = vi.mocked(fetchEmployeeFilters);
 const fetchCurrencyConfigMock = vi.mocked(fetchCurrencyConfig);
+const deleteEmployeeMock = vi.mocked(deleteEmployee);
 
 const mockEmployee = {
   id: 1,
@@ -33,6 +35,7 @@ describe("EmployeeListPage", () => {
   beforeEach(() => {
     fetchEmployeesMock.mockClear();
     fetchEmployeeFiltersMock.mockReset();
+    deleteEmployeeMock.mockReset();
     fetchEmployeeFiltersMock.mockResolvedValue({ departments: [], countries: [] });
   });
 
@@ -213,6 +216,52 @@ describe("EmployeeListPage", () => {
           expect.objectContaining({ department: "Engineering", search: "Jane" }),
         );
       });
+    });
+  });
+
+  it("resets to page 1 when a delete leaves the current page's results empty", async () => {
+    let hasDeleted = false;
+    const page1Rows = Array.from({ length: 20 }, (_, index) => ({
+      ...mockEmployee,
+      id: index + 1,
+      employeeCode: `EMP-${String(index + 1).padStart(6, "0")}`,
+      name: `Employee ${index + 1}`,
+    }));
+
+    fetchEmployeesMock.mockImplementation(async (params) => {
+      if (params.page === 1) {
+        return {
+          data: page1Rows,
+          pagination: { page: 1, pageSize: 20, total: 21, totalPages: 2 },
+        };
+      }
+      if (hasDeleted) {
+        return {
+          data: [],
+          pagination: { page: 2, pageSize: 20, total: 20, totalPages: 1 },
+        };
+      }
+      return {
+        data: [{ ...mockEmployee, id: 21, employeeCode: "EMP-000021", name: "Last One" }],
+        pagination: { page: 2, pageSize: 20, total: 21, totalPages: 2 },
+      };
+    });
+    deleteEmployeeMock.mockImplementation(async () => {
+      hasDeleted = true;
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<EmployeeListPage />);
+
+    await screen.findByText("Employee 1");
+    await user.click(screen.getByTitle("2"));
+    await screen.findByText("Last One");
+
+    await user.click(screen.getByRole("button", { name: "Delete Last One" }));
+    await user.click(await screen.findByRole("button", { name: "Delete" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Employee 1")).toBeInTheDocument();
     });
   });
 
