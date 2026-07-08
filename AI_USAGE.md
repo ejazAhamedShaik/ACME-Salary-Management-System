@@ -401,4 +401,9 @@ currency config endpoint, defaulting behavior, and form architecture`.
   fully close the loop.
 
 > [human note: ]
+> Create employee endpoint is developed. Used Zod package for request-body validations. 
+> Newly added employee can be from any country and to set the currency type developed GET /config/currencies endpoint which will give list of currencies. 
+> In frontend created a form in a modal to add new employee. Employee code creation will handled by BE and HR have to add mandatory fields like name, country, department, salary and date of joining. Currency will be auto populated when country is selected but it'll be editable. 
+> On successful addition, a notification/toast will be shown to the user confirming that user is added successfully. 
+
 
