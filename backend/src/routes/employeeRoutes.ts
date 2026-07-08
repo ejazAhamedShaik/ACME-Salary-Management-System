@@ -7,5 +7,6 @@ export function createEmployeeRouter(controller: EmployeeController): Router {
   router.get("/filters", (req, res) => controller.listFilters(req, res));
   router.post("/", (req, res) => controller.createEmployee(req, res));
   router.patch("/:id", (req, res) => controller.updateEmployee(req, res));
+  router.delete("/:id", (req, res) => controller.deleteEmployee(req, res));
   return router;
 }

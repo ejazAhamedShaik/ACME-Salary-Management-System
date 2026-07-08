@@ -8,6 +8,7 @@ export interface EmployeeController {
   listFilters(req: Request, res: Response): void;
   createEmployee(req: Request, res: Response): void;
   updateEmployee(req: Request, res: Response): void;
+  deleteEmployee(req: Request, res: Response): void;
 }
 
 const DEFAULT_PAGE = 1;
@@ -101,6 +102,22 @@ export function createEmployeeController(service: EmployeeService): EmployeeCont
       }
 
       res.status(200).json(updated);
+    },
+
+    deleteEmployee(req: Request, res: Response): void {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id <= 0) {
+        res.status(400).json({ errors: { id: "id must be a positive integer" } });
+        return;
+      }
+
+      const deleted = service.deleteEmployee(id);
+      if (!deleted) {
+        res.status(404).end();
+        return;
+      }
+
+      res.status(204).end();
     },
   };
 }

@@ -37,6 +37,7 @@ export interface EmployeeRepository {
   findMaxEmployeeCodeNumber(): number;
   create(row: NewEmployeeRow): Employee;
   update(id: number, row: UpdateEmployeeRow): Employee | undefined;
+  delete(id: number): boolean;
 }
 
 function buildWhereClause(filter: EmployeeFilter) {
@@ -124,6 +125,11 @@ export function createEmployeeRepository(
         return db.select().from(employees).where(eq(employees.id, id)).get();
       }
       return db.update(employees).set(row).where(eq(employees.id, id)).returning().get();
+    },
+
+    delete(id) {
+      const result = db.delete(employees).where(eq(employees.id, id)).run();
+      return result.changes > 0;
     },
   };
 }

@@ -58,6 +58,7 @@ export interface EmployeeService {
   listFilters(): FilterOptions;
   createEmployee(input: CreateEmployeeInput): EmployeeDto;
   updateEmployee(id: number, input: UpdateEmployeeInput): EmployeeDto | null;
+  deleteEmployee(id: number): boolean;
 }
 
 const EMPLOYEE_CODE_PREFIX = "EMP-";
@@ -153,6 +154,10 @@ export function createEmployeeService(repository: EmployeeRepository): EmployeeS
         salaryAmount: updated.salaryAmount,
         joinedAt: updated.joinedAt.toISOString(),
       };
+    },
+
+    deleteEmployee(id) {
+      return repository.delete(id);
     },
   };
 }
