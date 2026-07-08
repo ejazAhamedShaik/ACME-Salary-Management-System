@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, DatePicker, Form, Input, InputNumber, Select } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { useEmployeeFilters } from "../hooks/useEmployeeFilters";
@@ -33,6 +33,9 @@ export function EmployeeForm({ mode, initialValues, onSubmit }: EmployeeFormProp
   const [form] = Form.useForm<InternalFormValues>();
   const filtersQuery = useEmployeeFilters();
   const currencyQuery = useCurrencyConfig();
+  const [salaryCleared, setSalaryCleared] = useState(false);
+  const originalCurrencyCodeRef = useRef(mode === "edit" ? initialValues?.currencyCode : undefined);
+  const watchedCurrencyCode = Form.useWatch("currencyCode", form);
 
   useEffect(() => {
     if (initialValues) {
@@ -60,11 +63,30 @@ export function EmployeeForm({ mode, initialValues, onSubmit }: EmployeeFormProp
     label: value,
   }));
 
+  function maybeClearSalaryOnCurrencyChange(newCurrencyCode: string | undefined) {
+    const originalCurrencyCode = originalCurrencyCodeRef.current;
+    if (
+      mode === "edit" &&
+      originalCurrencyCode &&
+      newCurrencyCode &&
+      newCurrencyCode !== originalCurrencyCode &&
+      !salaryCleared
+    ) {
+      form.setFieldValue("salaryAmount", undefined);
+      setSalaryCleared(true);
+    }
+  }
+
   function handleCountryChange(country: string) {
     const defaultCurrency = currencyQuery.data?.countryCurrencyDefaults[country];
     if (defaultCurrency) {
       form.setFieldValue("currencyCode", defaultCurrency);
+      maybeClearSalaryOnCurrencyChange(defaultCurrency);
     }
+  }
+
+  function handleCurrencyChange(currencyCode: string) {
+    maybeClearSalaryOnCurrencyChange(currencyCode);
   }
 
   async function handleFinish(values: InternalFormValues) {
@@ -129,7 +151,12 @@ export function EmployeeForm({ mode, initialValues, onSubmit }: EmployeeFormProp
         label="Currency"
         rules={[{ required: true, message: "Currency is required" }]}
       >
-        <Select options={currencyOptions} loading={currencyQuery.isLoading} virtual={false} />
+        <Select
+          options={currencyOptions}
+          loading={currencyQuery.isLoading}
+          virtual={false}
+          onChange={handleCurrencyChange}
+        />
       </Form.Item>
       <Form.Item
         name="salaryAmount"
@@ -139,7 +166,15 @@ export function EmployeeForm({ mode, initialValues, onSubmit }: EmployeeFormProp
           { type: "number", min: 1, message: "Salary amount must be greater than zero" },
         ]}
       >
-        <InputNumber style={{ width: "100%" }} min={1} />
+        <InputNumber
+          style={{ width: "100%" }}
+          min={1}
+          placeholder={
+            mode === "edit" && salaryCleared && watchedCurrencyCode
+              ? `Enter salary in ${watchedCurrencyCode}`
+              : undefined
+          }
+        />
       </Form.Item>
       <Form.Item
         name="joinedAt"

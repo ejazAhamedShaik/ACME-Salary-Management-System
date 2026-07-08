@@ -39,3 +39,5 @@ export interface CreateEmployeePayload {
   salaryAmount: number;
   joinedAt: string;
 }
+
+export type UpdateEmployeePayload = Partial<CreateEmployeePayload>;

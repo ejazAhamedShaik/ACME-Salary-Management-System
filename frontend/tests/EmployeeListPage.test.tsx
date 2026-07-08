@@ -10,6 +10,7 @@ vi.mock("../src/api/employees", () => ({
   fetchEmployees: vi.fn(),
   fetchEmployeeFilters: vi.fn(),
   createEmployee: vi.fn(),
+  updateEmployee: vi.fn(),
 }));
 vi.mock("../src/api/config", () => ({ fetchCurrencyConfig: vi.fn() }));
 

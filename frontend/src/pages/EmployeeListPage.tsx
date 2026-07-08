@@ -3,9 +3,11 @@ import { Alert, Button, Empty, Flex, Input, Select, Space } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { EmployeeTable } from "../components/EmployeeTable";
 import { CreateEmployeeModal } from "../components/CreateEmployeeModal";
+import { EditEmployeeModal } from "../components/EditEmployeeModal";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useEmployeeFilters } from "../hooks/useEmployeeFilters";
 import { useEmployees } from "../hooks/useEmployees";
+import type { Employee } from "../api/types";
 
 const DEFAULT_PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -17,6 +19,7 @@ export function EmployeeListPage() {
   const [department, setDepartment] = useState("");
   const [country, setCountry] = useState("");
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const debouncedSearch = useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS);
 
   const filtersQuery = useEmployeeFilters();
@@ -90,6 +93,7 @@ export function EmployeeListPage() {
       </Flex>
 
       <CreateEmployeeModal open={isCreateModalOpen} onClose={() => setCreateModalOpen(false)} />
+      <EditEmployeeModal employee={editingEmployee} onClose={() => setEditingEmployee(null)} />
 
       {query.isError ? (
         <Alert type="error" showIcon message="Couldn't load employees. Please try again." />
@@ -101,6 +105,7 @@ export function EmployeeListPage() {
           pagination={pagination}
           isFetching={query.isFetching}
           onChange={handleTableChange}
+          onEdit={setEditingEmployee}
         />
       )}
     </div>

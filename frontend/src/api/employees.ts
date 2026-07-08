@@ -1,5 +1,11 @@
 import { API_BASE_URL } from "./apiClient";
-import type { CreateEmployeePayload, Employee, EmployeeFilters, PaginatedResponse } from "./types";
+import type {
+  CreateEmployeePayload,
+  Employee,
+  EmployeeFilters,
+  PaginatedResponse,
+  UpdateEmployeePayload,
+} from "./types";
 
 export interface FetchEmployeesParams {
   page: number;
@@ -72,6 +78,28 @@ export async function createEmployee(payload: CreateEmployeePayload): Promise<Em
 
   if (!response.ok) {
     throw new Error(`Failed to create employee: ${response.status}`);
+  }
+
+  return response.json() as Promise<Employee>;
+}
+
+export async function updateEmployee(
+  id: number,
+  payload: UpdateEmployeePayload,
+): Promise<Employee> {
+  const response = await fetch(`${API_BASE_URL}/employees/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (response.status === 400) {
+    const body = (await response.json()) as { errors: Record<string, string> };
+    throw new ApiFieldError(body.errors);
+  }
+
+  if (!response.ok) {
+    throw new Error(`Failed to update employee: ${response.status}`);
   }
 
   return response.json() as Promise<Employee>;
