@@ -681,5 +681,7 @@ approach and outlier definition in ARCHITECTURE.md`.
   on real data, not just hand-built fixtures.
 
 > [human note: ]
-
-
+> `/insights/summary` and `insights/outliers` endpoints are implemented. Separate route flow is written for insights routes beside employees. Added insightsRepository, insightsService, insightsController, and insightsRoutes for this route category. 
+> `/insights/summary` will return total payroll of all employees, average payroll by department, average payroll by country, head count by department and country. 
+> `/insights/outliers` will give outliers by department. This will return the employee details who have highest and lowest salary in each department. 
+> Tests are written to validate each route. Zod is being used for validating request-body. 
