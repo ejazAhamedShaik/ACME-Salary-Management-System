@@ -41,3 +41,32 @@ export interface CreateEmployeePayload {
 }
 
 export type UpdateEmployeePayload = Partial<CreateEmployeePayload>;
+
+export interface InsightsSummary {
+  totalPayrollUSD: number;
+  totalPayrollByCountryUSD: Record<string, number>;
+  avgSalaryByDepartmentUSD: Record<string, number>;
+  avgSalaryByCountryUSD: Record<string, number>;
+  headcountByDepartment: Record<string, number>;
+  headcountByCountry: Record<string, number>;
+}
+
+export interface OutlierEmployee {
+  id: number;
+  employeeCode: string;
+  name: string;
+  country: string;
+  currencyCode: string;
+  salaryAmount: number;
+  salaryUSD: number;
+}
+
+export interface DepartmentOutlier {
+  department: string;
+  highest: OutlierEmployee;
+  lowest: OutlierEmployee;
+}
+
+export interface InsightsOutliers {
+  outliersByDepartment: DepartmentOutlier[];
+}
