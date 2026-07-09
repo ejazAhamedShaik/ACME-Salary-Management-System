@@ -25,7 +25,7 @@ export function InsightsPage() {
         </div>
       ) : isSummaryEmpty ? (
         <div data-testid="summary-empty">
-          <Empty description="No insights available." />
+          <Empty description="No summary data found." />
         </div>
       ) : (
         <div data-testid="summary-content">
@@ -44,7 +44,7 @@ export function InsightsPage() {
         </div>
       ) : isOutliersEmpty ? (
         <div data-testid="outliers-empty">
-          <Empty description="No insights available." />
+          <Empty description="No outlier data found." />
         </div>
       ) : (
         <div data-testid="outliers-content">

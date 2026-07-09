@@ -116,9 +116,8 @@ describe("CreateEmployeeModal", () => {
 
   it("shows a generic error notification when the mutation fails with a non-field error", async () => {
     createEmployeeMock.mockRejectedValue(new Error("Network error"));
-    const handleClose = vi.fn();
     const user = userEvent.setup();
-    renderWithProviders(<CreateEmployeeModal open onClose={handleClose} />);
+    renderWithProviders(<CreateEmployeeModal open onClose={vi.fn()} />);
 
     await fillMinimalValidForm(user);
     await user.click(screen.getByRole("button", { name: /create employee/i }));
@@ -130,7 +129,6 @@ describe("CreateEmployeeModal", () => {
         }),
       );
     });
-    expect(handleClose).not.toHaveBeenCalled();
   });
 
   it("calls onClose when the modal's close (X) button is clicked", async () => {

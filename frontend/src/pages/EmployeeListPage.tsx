@@ -108,9 +108,13 @@ export function EmployeeListPage() {
       <EditEmployeeModal employee={editingEmployee} onClose={() => setEditingEmployee(null)} />
 
       {query.isError ? (
-        <Alert type="error" showIcon message="Couldn't load employees. Please try again." />
+        <div data-testid="employees-error">
+          <Alert type="error" showIcon message="Couldn't load employees. Please try again." />
+        </div>
       ) : isEmpty ? (
-        <Empty description="No employees found." />
+        <div data-testid="employees-empty">
+          <Empty description="No employees found." />
+        </div>
       ) : (
         <EmployeeTable
           data={data}

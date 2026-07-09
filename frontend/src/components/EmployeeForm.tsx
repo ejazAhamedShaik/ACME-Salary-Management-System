@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Button, DatePicker, Form, Input, InputNumber, Select } from "antd";
+import { Button, DatePicker, Form, Input, InputNumber, notification, Select } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { useEmployeeFilters } from "../hooks/useEmployeeFilters";
 import { useCurrencyConfig } from "../hooks/useCurrencyConfig";
@@ -113,7 +113,10 @@ export function EmployeeForm({ mode, initialValues, onSubmit }: EmployeeFormProp
           })),
         );
       } else {
-        throw error;
+        notification.error({
+          message: mode === "create" ? "Couldn't create employee" : "Couldn't update employee",
+          description: "Please try again.",
+        });
       }
     }
   }
