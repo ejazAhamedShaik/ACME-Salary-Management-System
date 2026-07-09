@@ -905,4 +905,7 @@ across screens`, `docs: correct README against current implementation`.
   silently deciding.
 
 > [human note: ]
+> Final regression testing is done for both frontend and backend to prepare for deployment. 
+> All tests passed successfully
+> Repo clean up is done and updated all the docs, removed dead code, 
 
