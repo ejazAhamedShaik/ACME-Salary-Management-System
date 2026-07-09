@@ -8,10 +8,11 @@ a spreadsheet-based workflow. See `REQUIREMENTS.md` for full scope and
 ## Tech stack
 
 - **Backend:** Node.js + TypeScript + Express, SQLite via `better-sqlite3` +
-  Drizzle ORM
-- **Frontend:** React + Vite + TypeScript, React Router, Ant Design v6,
-  TanStack Query for server-state fetching/caching (see `ARCHITECTURE.md` for
-  why, over hand-rolled `useState`/`useEffect` fetching)
+  Drizzle ORM, Zod for request validation
+- **Frontend:** React + Vite + TypeScript, `react-router` (the unified
+  package, not `react-router-dom`), Ant Design v6, TanStack Query for
+  server-state fetching/caching (see `ARCHITECTURE.md` for why, over
+  hand-rolled `useState`/`useEffect` fetching)
 - **Testing:** Vitest on both sides (backend also uses Supertest; frontend also
   uses React Testing Library + jest-dom)
 - **Package manager:** npm
@@ -52,7 +53,7 @@ Paginated, searchable, filterable employee list.
 |---|---|---|
 | `page` | `1` | Invalid values (non-numeric, ≤0) fall back to the default. A valid page beyond the last one just returns an empty `data` array. |
 | `pageSize` | `20` | Invalid values fall back to the default; values above `100` are clamped to `100`, never rejected. |
-| `search` | — | Case-insensitive partial match against employee name. |
+| `search` | — | Case-insensitive partial match against employee name or employee code. |
 | `department` | — | Exact match. |
 | `country` | — | Exact match. |
 
@@ -258,6 +259,7 @@ npm start             # run the compiled server (dist/server.js)
 npm run seed          # run the seed script standalone (applies migrations + seeds)
 npm run db:generate   # regenerate Drizzle migration SQL after a schema change
 npm test              # run the Vitest suite
+npm run test:watch    # run the Vitest suite in watch mode
 ```
 
 ### Frontend
@@ -310,6 +312,7 @@ Other frontend scripts:
 npm run build     # production build
 npm run preview   # preview the production build locally
 npm test          # run the Vitest suite
+npm run test:watch # run the Vitest suite in watch mode
 ```
 
 ## Docs

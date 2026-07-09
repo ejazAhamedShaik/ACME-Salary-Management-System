@@ -801,3 +801,108 @@ extend create/update/delete mutations to invalidate insights queries`,
 > When mutations like create/edit/delete actions happen then current state of insights is invalidated and recomputed from BE. This is to make sure that no stale data is shown in the insights page. 
 > When there is not employee data (edge case) then empty state in the insights page will be shown. 
 
+## Entry 12 — Final consistency audit and cleanup pass (2026-07-09)
+
+**What was asked:** A verification/cleanup pass across the whole codebase —
+no new features. Five checks: loading/error/empty state consistency across
+screens; README/ARCHITECTURE.md accuracy against the current code; leftover
+debug code; a full regression run on both suites; deploy-readiness (env
+vars, build/start scripts, no hardcoded origins). Only commit what actually
+needed fixing.
+
+**What was investigated (three parallel audits, then reconciled):**
+- **State consistency**: error `<Alert>` shape/tone was already consistent
+  across `EmployeeListPage`/`InsightsPage`. Found: empty-state copy style
+  diverged (`"No employees found."` vs an identical `"No insights available."`
+  reused for both the summary and outliers sections despite different data);
+  `InsightsPage`'s states were `data-testid`-wrapped for testability,
+  `EmployeeListPage`'s weren't. More importantly, reading `EmployeeForm.tsx`
+  directly (not just trusting the audit) confirmed a real bug: `handleFinish`'s
+  catch block only handled `ApiFieldError` (400 validation) and rethrew
+  everything else uncaught — a network/server failure on create or edit
+  produced **no visible feedback at all**, despite `notification.success`
+  already existing for the happy path.
+- **Docs accuracy**: README's Tech Stack section never mentioned Zod despite
+  it being the actual backend validation library; the `GET /employees`
+  `search` param doc said it matched only "employee name" (stale — it
+  matches name OR employeeCode, and the frontend's own placeholder text
+  already reflects this correctly); `test:watch` was undocumented on both
+  sides. ARCHITECTURE.md was checked against a 12-topic checklist derived
+  from the task and found complete (entries 1–18) — no changes made there.
+- **Debug code**: none found anywhere in `backend/src`, `backend/tests`,
+  `frontend/src`, or `frontend/tests` — every `console.*` call present is
+  intentional startup/seed logging or the documented `currencyConversion.ts`
+  warning.
+- **Regression run**: backend 51/51 passing. Frontend showed 8 failures
+  under full parallelism, all of which passed cleanly when the same files
+  were rerun in isolation — confirmed transient parallel-file-contention
+  flakiness (consistent with Entry 7/8's prior notes on this), not real
+  regressions.
+- **Deploy-readiness**: env vars (`CORS_ORIGIN`/`PORT`/`DATABASE_FILE`
+  backend, `VITE_API_BASE_URL` frontend) each read in exactly one
+  designated file, matching `.env.example` on both sides with no
+  hardcoded-origin bypasses found anywhere else. Backend `build`/`start`
+  correctly builds and runs compiled `dist/server.js`, not source
+  TypeScript. Frontend `build` succeeds (only a non-blocking bundle-size
+  advisory, not acted on — adding code-splitting would be a scope-expanding
+  change this pass wasn't asking for).
+
+**A false alarm, investigated and closed out:** one audit agent initially
+reported encountering tool output containing text impersonating system
+reminders (fake "Plan mode active"/MCP-instructions/date-change blocks).
+This was treated as a potential prompt-injection incident and investigated
+immediately rather than passed through uncritically: asked the agent to
+produce the verbatim source, at which point it re-inspected its own
+transcript, found no actual instance of the described text in any tool
+result it had received, and retracted the claim as an unsubstantiated
+in-the-moment error on its own part. A repo-wide grep (including
+`node_modules`) for the alleged phrases also found nothing. No real
+incident — noted here for the record, not because it affected the
+implementation.
+
+**What was generated:**
+- `frontend/src/components/EmployeeForm.tsx` — `handleFinish`'s catch block
+  now shows `notification.error` (mode-aware copy: `"Couldn't create
+  employee"` / `"Couldn't update employee"`) for any non-`ApiFieldError`
+  failure, instead of rethrowing silently.
+- `frontend/src/pages/EmployeeListPage.tsx` — error/empty branches wrapped
+  in `data-testid="employees-error"`/`"employees-empty"`, matching
+  `InsightsPage`'s existing convention.
+- `frontend/src/pages/InsightsPage.tsx` — the two identical `"No insights
+  available."` messages replaced with differentiated, `EmployeeListPage`-style
+  copy: `"No summary data found."` / `"No outlier data found."`.
+- `frontend/tests/CreateEmployeeModal.test.tsx`,
+  `frontend/tests/EditEmployeeModal.test.tsx` — one new scenario each
+  (mutation rejects with a plain `Error`, assert `notification.error` fires)
+  — both confirmed failing (via an actual unhandled-rejection, proving the
+  bug was real) before the fix.
+- README.md — Zod added to Tech Stack; `search` param doc corrected;
+  `test:watch` added to both script lists; routing dependency clarified as
+  `react-router` (not `react-router-dom`).
+- No changes to ARCHITECTURE.md, REQUIREMENTS.md, or any backend file —
+  audits confirmed nothing there needed fixing.
+
+**Files touched:** see the 3 commits — `test: add failing tests for generic
+mutation error notifications`, `fix: standardize loading/error/empty states
+across screens`, `docs: correct README against current implementation`.
+
+**Process notes:**
+- The one test assertion that needed correcting after being written: an
+  added `expect(handleClose).not.toHaveBeenCalled()` in the
+  `CreateEmployeeModal` new test failed — not because the fix was wrong
+  (the `notification.error` assertion right before it passed), but because
+  the shared `fillMinimalValidForm` test helper's trailing `{Escape}`
+  keypress closes the AntD `Modal` itself as a pre-existing, unrelated side
+  effect. Removed the incorrect assertion rather than changing the shared
+  helper or the app's actual Escape-to-close behavior.
+- Deliberately did *not* force `EmployeeListPage` into an identical
+  structural loading pattern to `InsightsPage` (e.g. adding a redundant
+  top-level `Spin` before the table) — `EmployeeTable`'s built-in AntD
+  `Table` `loading` prop is the more idiomatic mechanism for table-shaped
+  content and already shows a spinner; forcing a second, stacked loading
+  indicator would have been a regression dressed up as "consistency."
+  Documented this judgment call in the plan before making it, rather than
+  silently deciding.
+
+> [human note: ]
+
