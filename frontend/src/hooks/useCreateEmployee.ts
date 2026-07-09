@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createEmployee } from "../api/employees";
+import { invalidateEmployeeRelatedQueries } from "./invalidateEmployeeRelatedQueries";
 
 export function useCreateEmployee() {
   const queryClient = useQueryClient();
@@ -7,7 +8,7 @@ export function useCreateEmployee() {
   return useMutation({
     mutationFn: createEmployee,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      invalidateEmployeeRelatedQueries(queryClient);
     },
   });
 }
