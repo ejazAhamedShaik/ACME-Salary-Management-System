@@ -3,7 +3,12 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { EmployeeListPage } from "../src/pages/EmployeeListPage";
 import { renderWithProviders } from "./testUtils";
-import { deleteEmployee, fetchEmployeeFilters, fetchEmployees } from "../src/api/employees";
+import {
+  deleteEmployee,
+  fetchEmployeeFilters,
+  fetchEmployees,
+  updateEmployee,
+} from "../src/api/employees";
 import { fetchCurrencyConfig } from "../src/api/config";
 
 vi.mock("../src/api/employees", () => ({
@@ -19,6 +24,7 @@ const fetchEmployeesMock = vi.mocked(fetchEmployees);
 const fetchEmployeeFiltersMock = vi.mocked(fetchEmployeeFilters);
 const fetchCurrencyConfigMock = vi.mocked(fetchCurrencyConfig);
 const deleteEmployeeMock = vi.mocked(deleteEmployee);
+const updateEmployeeMock = vi.mocked(updateEmployee);
 
 const mockEmployee = {
   id: 1,
@@ -36,6 +42,7 @@ describe("EmployeeListPage", () => {
     fetchEmployeesMock.mockClear();
     fetchEmployeeFiltersMock.mockReset();
     deleteEmployeeMock.mockReset();
+    updateEmployeeMock.mockReset();
     fetchEmployeeFiltersMock.mockResolvedValue({ departments: [], countries: [] });
   });
 
@@ -262,6 +269,52 @@ describe("EmployeeListPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Employee 1")).toBeInTheDocument();
+    });
+  });
+
+  describe("editing an employee", () => {
+    it("shows the updated value in the table after a successful edit, without a page reload", async () => {
+      fetchEmployeeFiltersMock.mockResolvedValue({
+        departments: ["Engineering", "Finance"],
+        countries: ["United States"],
+      });
+      fetchCurrencyConfigMock.mockResolvedValue({
+        currencies: ["USD"],
+        countryCurrencyDefaults: { "United States": "USD" },
+      });
+
+      let fetchCount = 0;
+      fetchEmployeesMock.mockImplementation(async () => {
+        fetchCount += 1;
+        return {
+          data: [{ ...mockEmployee, department: fetchCount === 1 ? "Engineering" : "Finance" }],
+          pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
+        };
+      });
+      updateEmployeeMock.mockResolvedValue({ ...mockEmployee, department: "Finance" });
+
+      const user = userEvent.setup();
+      renderWithProviders(<EmployeeListPage />);
+
+      await screen.findByText("Jane Doe");
+      expect(screen.getByText("Engineering")).toBeInTheDocument();
+
+      await user.click(screen.getByLabelText("Edit Jane Doe"));
+      await screen.findByDisplayValue("Jane Doe");
+
+      await user.click(screen.getByLabelText("Department"));
+      await user.click(await screen.findByRole("option", { name: "Finance" }));
+      await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+      await waitFor(() => {
+        expect(updateEmployeeMock).toHaveBeenCalled();
+      });
+
+      const table = screen.getByRole("table");
+      await waitFor(() => {
+        expect(within(table).queryByText("Engineering")).not.toBeInTheDocument();
+      });
+      expect(within(table).getByText("Finance")).toBeInTheDocument();
     });
   });
 
