@@ -14,7 +14,7 @@ export function InsightsPage() {
 
   return (
     <div data-testid="insights-page">
-      <Divider orientation="left">Summary</Divider>
+      <Divider titlePlacement="left">Summary</Divider>
       {summaryQuery.isLoading ? (
         <div data-testid="summary-loading">
           <Spin />
@@ -33,7 +33,7 @@ export function InsightsPage() {
         </div>
       )}
 
-      <Divider orientation="left">Outliers</Divider>
+      <Divider titlePlacement="left">Outliers</Divider>
       {outliersQuery.isLoading ? (
         <div data-testid="outliers-loading">
           <Spin />
