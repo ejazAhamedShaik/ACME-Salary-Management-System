@@ -269,6 +269,9 @@ cp .env.example .env   # points VITE_API_BASE_URL at the local backend
 npm run dev            # starts the app on http://localhost:5173
 ```
 
+A header nav (Employees / Insights) sits above every screen, with the
+current route highlighted.
+
 The employee list screen has department and country filter dropdowns next to
 the search box, populated from `GET /employees/filters`. Each defaults to
 "All Departments"/"All Countries" and combines with search via AND.
@@ -289,6 +292,17 @@ server-side.
 Each row also has a Delete action, guarded by a confirmation prompt — the
 delete only fires once you explicitly confirm it, never on the icon click
 alone. Deleting the last row on a page automatically returns you to page 1.
+
+The Insights screen (`/insights`) renders `GET /insights/summary` and
+`GET /insights/outliers` as two independently loading/erroring sections: a
+Total Payroll figure plus By Department and By Country tables (headcount,
+avg salary, and — for countries — total payroll, all formatted as USD
+currency), and an Outliers table showing each department's highest- and
+lowest-paid employee by converted salary. A department with a single
+employee shows a "sole employee" note in place of a duplicated lowest-earner
+block. Creating, editing, or deleting an employee on the list screen
+refreshes Insights automatically the next time it's viewed — no manual
+reload needed.
 
 Other frontend scripts:
 

@@ -417,3 +417,40 @@ Also rejected: throwing/500-ing the whole request on an unrecognized
 currency code — would make one bad row (from a bypassed-validation write)
 take down aggregate reporting entirely, worse than a slightly incomplete but
 available answer.
+
+## 18. Insights screen: no new charting library; employee mutations invalidate insights too
+
+**What we chose:** The Insights screen (`InsightsSummaryView`, `OutliersTable`)
+renders `GET /insights/summary` and `GET /insights/outliers` entirely with
+Ant Design's existing `Statistic`/`Table`/`Typography` components — no
+charting library (`recharts`, `chart.js`, etc.) was added. Separately,
+`useCreateEmployee`/`useUpdateEmployee`/`useDeleteEmployee` were extended
+(via a new shared `invalidateEmployeeRelatedQueries` helper) to invalidate
+the `insightsSummary`/`insightsOutliers` query keys alongside the existing
+`employees` one.
+
+**Why:** `REQUIREMENTS.md` describes Insights as "a small, fixed set of
+views ... not a general BI tool" — a payroll total, a handful of
+department/country breakdown tables, and a highest/lowest table are all
+well served by tabular and single-figure displays, which AntD already
+provides. Pulling in a charting library for this pass would be new-dependency
+weight (flagged by `CLAUDE.md`'s guardrail on adding major dependencies)
+with no corresponding requirement calling for trend lines, distributions, or
+other genuinely chart-shaped views. On the invalidation side: before this
+change, deleting/editing/creating an employee only invalidated the
+`employees` list — Insights, cached with a 5-minute `staleTime` (chosen
+because insights data only changes via employee mutations, not on its own
+clock), would keep showing pre-mutation figures for up to 5 minutes after a
+change that visibly affects them (a deleted employee's department headcount,
+a new hire's country total). Since insights derive directly from the same
+`employees` table, any mutation that changes the row set should invalidate
+both, not just the one the mutation's own screen happens to be looking at.
+
+**What we rejected:** A charting library — more visually rich, but disproportionate to "a small, fixed set of views" at this MVP's scope; worth
+reconsidering if/when a genuinely chart-shaped requirement (e.g. a payroll
+trend over time, which would first need salary history — currently out of
+scope) is added. For invalidation: polling Insights on an interval instead
+of invalidating on mutation — would eventually self-correct but leaves the
+same window of visibly stale data after a known-causal action, and adds
+background network traffic for a demo-scale, single-user tool with no
+actual concurrent-editor scenario to justify polling.

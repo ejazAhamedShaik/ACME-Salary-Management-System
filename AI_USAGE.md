@@ -686,3 +686,114 @@ approach and outlier definition in ARCHITECTURE.md`.
 > `/insights/outliers` will give outliers by department. This will return the employee details who have highest and lowest salary in each department. 
 > Tests are written to validate each route.
 > Separation of routes from employees route by Claude is the right call. Reason for this is it's a separate flow. We are processing over the employees data and fetching the insights. 
+
+## Entry 11 — Insights screen (summary + outliers) and navigation (2026-07-09)
+
+**What was asked:** Build the frontend for the already-complete
+`GET /insights/summary`/`GET /insights/outliers` endpoints — a new
+`/insights` route, a screen rendering both, and real navigation between it
+and the employee list (the app's first second screen). Also extend
+`useCreateEmployee`/`useUpdateEmployee`/`useDeleteEmployee` to invalidate
+insights' cached queries, not just the employee list's, via a shared
+helper. Following TDD, split across commits.
+
+**Discrepancies flagged before planning (per `CLAUDE.md`'s "never edit scope
+silently" and general verify-before-acting practice):** the task described a
+department×country cross-tab as "already logged as deferred" in
+`REQUIREMENTS.md` — it wasn't; confirmed with the developer and added it to
+the Explicitly Deferred list as part of this session rather than assuming
+either that the doc was stale or the claim baseless. Separately, the task
+said to "extend the existing mutation-hook tests" for the three mutation
+hooks — no dedicated hook test files existed (only indirect coverage via
+`CreateEmployeeModal.test.tsx`/`EditEmployeeModal.test.tsx`); confirmed with
+the developer to create new dedicated hook test files using RTL's
+`renderHook` rather than testing invalidation indirectly through UI.
+
+**What was generated:**
+- `frontend/src/components/AppLayout.tsx` (new) — AntD `Layout`/`Menu`
+  header nav (Employees/Insights) using `react-router`'s `Link`/
+  `useLocation`, active route highlighted via `selectedKeys`.
+  `frontend/src/App.tsx` — wraps the existing route in `AppLayout`, adds
+  `/insights` → `InsightsPage`.
+- `frontend/src/api/insights.ts` (`fetchInsightsSummary`,
+  `fetchInsightsOutliers`, matching the existing hand-rolled-`fetch`
+  convention with no shared wrapper), `frontend/src/api/types.ts`
+  (`InsightsSummary`, `OutlierEmployee`, `DepartmentOutlier`,
+  `InsightsOutliers`, mirroring the backend DTOs exactly).
+- `frontend/src/hooks/useInsightsSummary.ts`/`useInsightsOutliers.ts` (new)
+  — 5-minute `staleTime`, matching `useEmployeeFilters`'s reasoning (data
+  only changes via employee mutations, not its own clock).
+- `frontend/src/utils/formatCurrency.ts` (new, first `utils/` file in this
+  codebase) — `formatUSD`, a real `$`-prefixed `Intl.NumberFormat` currency
+  formatter, introduced because insights figures are unambiguously USD
+  (post-conversion), unlike `EmployeeTable`'s existing raw-amount +
+  currency-code-suffix formatting for native `salaryAmount`.
+- `frontend/src/components/InsightsSummaryView.tsx` (Total Payroll
+  `Statistic` plus By Department/By Country `Table`s, each row built by
+  zipping the response's parallel headcount/avg/payroll maps) and
+  `frontend/src/components/OutliersTable.tsx` (one row per department;
+  when `highest.id === lowest.id`, the Lowest cell renders a "sole
+  employee" note instead of duplicating the full block) — both plain-props,
+  no-hooks presentational components, matching `EmployeeTable`'s convention.
+  `frontend/src/pages/InsightsPage.tsx` (new) — owns both queries, renders
+  each section's loading/error/empty/content state fully independently
+  (test-id'd) so one query's error never blanks the other section.
+- `frontend/src/hooks/invalidateEmployeeRelatedQueries.ts` (new) — three
+  `invalidateQueries` calls (`employees`, `insightsSummary`,
+  `insightsOutliers`); the three mutation hooks now call this instead of
+  invalidating `employees` alone.
+- `frontend/tests/AppLayout.test.tsx`, `frontend/tests/InsightsPage.test.tsx`
+  (6 scenarios: independent per-section loading, formatted summary figures,
+  outliers highest/lowest, single-employee "sole employee" rendering, empty
+  state, one section erroring while the other renders normally), and three
+  new hook test files (`useCreateEmployee.test.tsx`, `useUpdateEmployee.test.tsx`,
+  `useDeleteEmployee.test.tsx`) using `renderHook` + a `queryClient.invalidateQueries`
+  spy.
+- Docs: README (nav note, Insights screen section), ARCHITECTURE.md (entry
+  18: no new charting library, cache-invalidation extension and why),
+  REQUIREMENTS.md (Explicitly Deferred: department×country cross-tab), this
+  file.
+
+**Files touched:** see the commits — `test:`/`feat: add AppLayout with
+navigation...`, `test: add failing tests for insights summary and outliers
+rendering`, `feat: implement insights summary and outliers components and
+page`, `test: add failing tests for insights cache invalidation...`, `feat:
+extend create/update/delete mutations to invalidate insights queries`,
+`fix: use titlePlacement instead of deprecated Divider orientation prop`,
+`docs: document insights screen and cache-invalidation decision`.
+
+**Process notes:**
+- The task's fixed commit list put the AppLayout `feat` commit first with no
+  preceding `test:` commit (unlike every other step). Resolved by still
+  writing `AppLayout.test.tsx` and confirming it failed before writing
+  `AppLayout.tsx`, landing test and implementation as two separate commits
+  anyway (matching `CLAUDE.md`'s explicit "commit at each step, never
+  bundle" rule, which takes precedence over the task's undercounted list) —
+  the actual commit count came out one higher than the task specified.
+  `InsightsPage.tsx` needed a temporary minimal stub in the AppLayout commit
+  (just a `data-testid` div) so the new `/insights` route had something to
+  compile against and navigate to before the real page existed — replaced
+  outright in the next `feat` commit, not left as dead code.
+  `AppLayout.test.tsx` initially clicked the AntD `Menu`'s `role="menuitem"`
+  `<li>` to trigger navigation, which doesn't work — the `<Link>`'s own
+  `<a>` needs the click, not its containing menu item; fixed by targeting
+  `role="link"` instead.
+- Verified end-to-end against the real running app (both dev servers, via
+  the browser extension): nav renders and highlights correctly, Insights
+  renders real seeded-DB figures matching the backend's own `curl` output
+  from the previous session, and — the key correctness check — deleting a
+  real Engineering employee from the list screen and switching to Insights
+  (client-side navigation, no manual reload) showed Engineering's headcount
+  drop from 1736 to 1735 immediately, confirming the invalidation actually
+  works against the live app, not just the mocked hook tests. The browser
+  extension's screenshot capture was intermittently unresponsive during this
+  session (a recurring issue noted in Entry 7 too); verified via the page's
+  actual text content instead of relying on a hung screenshot, and confirmed
+  it was an automation artifact, not an app bug, once text-based checks
+  passed consistently.
+- Fixed an unrelated AntD v6.5.0 deprecation warning surfaced in the
+  console during manual verification (`Divider`'s `orientation` prop renamed
+  to `titlePlacement`) in a small separate `fix:` commit rather than folding
+  it into the feature commit it was noticed in.
+
+> [human note: ]

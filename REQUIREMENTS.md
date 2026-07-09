@@ -57,6 +57,9 @@ separately in `ARCHITECTURE.md`.
 - Salary history / raise tracking over time
 - Real-time FX rates
 - Payroll / tax system integration
+- Department × country cross-tab view on the Insights screen (the current
+  summary breaks down by department and by country independently, not
+  jointly)
 
 ## Amendments
 
