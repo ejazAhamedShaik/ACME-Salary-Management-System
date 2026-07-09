@@ -11,7 +11,8 @@ HR Manager — a single-user persona for this MVP. No other roles are in scope.
 
 ## What This Tool Must Let the HR Manager Do
 1. Find and review any employee's salary record quickly, even across 10,000 people.
-2. Add a new employee, or correct/update an existing salary record.
+2. Add a new employee, correct/update an existing salary record, or remove an
+   employee who has departed.
 3. Answer, without exporting to Excel, questions such as:
    - What's the average salary by department? By country?
    - How many employees do we have per department / per country?
@@ -20,9 +21,11 @@ HR Manager — a single-user persona for this MVP. No other roles are in scope.
 
 ## In Scope (MVP)
 - **Employee directory** — paginated, searchable, filterable list (by name,
-  department, country). Must stay fast at 10,000 records.
-- **Create / edit employee** — name, department, country, currency, salary, join
-  date, with basic validation (required fields, no negative or zero salary).
+  employee code, department, country). Must stay fast at 10,000 records.
+- **Create / edit / remove employee** — name, department, country, currency,
+  salary, join date, with basic validation (required fields, no negative or
+  zero salary). Removal is a hard delete, not a soft/flagged one — consistent
+  with salary history already being out of scope; there's nothing to preserve.
 - **Compensation insights** — a small, fixed set of views answering the questions
   above (by department, by country, distribution/outliers). This is a purpose-built
   reporting view, not a general BI tool.
@@ -53,20 +56,57 @@ full-table scans. Deeper architecture and performance decisions are covered
 separately in `ARCHITECTURE.md`.
 
 ## Explicitly Deferred (good next steps, not MVP)
+Grouped by kind rather than listed flat, since "what's not built" spans a few
+different categories of reasoning. If continuing, priority order would be:
+(1) sorting — cheapest, most obviously missing from a v1 list view; (2) the
+department × country cross-tab — highest product value of anything here;
+(3) Postgres over SQLite — the biggest gap between this and a real deployment.
+
+**Feature completeness**
+- Sort on the employee list (deferred at the GET /employees step; search and
+  filtering shipped, sorting did not)
+- Bulk create / CSV import; no way to add a new department or country value
+  from the UI — the fixed seed-time list is also the only list
+- Bulk delete; no undo/recovery after a delete (hard delete was the
+  deliberate choice — see table above)
+- Multi-select on department/country filters (single-select was the MVP call)
+- Department × country cross-tab for average salary (e.g., "average
+  Engineering salary in Germany vs. India") — the current by-department and
+  by-country views are independent marginals, not a combined breakdown
 - Role-based access control
 - Salary history / raise tracking over time
 - Real-time FX rates
 - Payroll / tax system integration
-- Department × country cross-tab view on the Insights screen (the current
-  summary breaks down by department and by country independently, not
-  jointly)
+
+**UX polish**
+- Charts/visualizations on the insights screen (Ant Design's own Table/
+  Statistic components were the deliberate choice, not a technical limit)
+- Drill-down interactivity (e.g., clicking a department to filter the
+  employee list to it)
+- Optimistic UI updates on create/edit/delete (currently wait-then-refetch —
+  itself a deliberate simplicity call, not an oversight)
+
+**Production-readiness** — things that were reasonable *because this is an
+assessment*, worth being explicit about rather than presenting as finished
+- SQLite + auto-reseed-on-startup was a deliberate simplification for
+  assessment scale; a real deployment would need persistent Postgres
+- Render's free-tier cold start is a demo-experience limitation of the
+  hosting tier, not a design flaw in the app
+- No monitoring/observability, no CI pipeline beyond auto-deploy-on-push
+- Simple highest/lowest outlier detection vs. a statistical (IQR-based)
+  approach — reasoning already in `ARCHITECTURE.md`
 
 ## Amendments
-
-- **Employee search covers employee code, not just name.** HR looks people up
-  by employee code/ID as often as by name, so the directory's search matches
-  a partial, case-insensitive substring of either.
-- **Employee removal is in scope, as a hard delete with no audit trail.**
-  Consistent with salary history already being out of scope (see "Deliberately
-  Out of Scope"), a removed employee's record is actually deleted, not flagged
-  or versioned — there is no recovery or undo after the fact.
+- **2026-07-07** — Employee directory search expanded to include employee code,
+  not just name. Discovered during implementation: HR teams commonly look an
+  employee up by code/ID (e.g., from a ticket or another system), not only by
+  name. Original scope was an oversight rather than a deliberate exclusion.
+- **2026-07-08** — DELETE added to scope. Flagged as an open question while
+  create/edit were being built, deliberately left undecided rather than
+  defaulted into; confirmed in scope once the rest of the CRUD surface was
+  complete. Real offboarding need (an employee leaves, their record should be
+  removable) outweighs the small added surface area.
+- **2026-07-09** — Deferred-items list consolidated. Several exclusions were
+  decided in the moment while building individual features (noted in that
+  feature's own build session) but never rolled up here. Gathered into one
+  place, grouped by kind, with a priority order, ahead of submission.
