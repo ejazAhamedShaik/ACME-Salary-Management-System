@@ -29,12 +29,14 @@ const createEmployeeMock = vi.mocked(createEmployee);
 const fetchEmployeeFiltersMock = vi.mocked(fetchEmployeeFilters);
 const fetchCurrencyConfigMock = vi.mocked(fetchCurrencyConfig);
 const notificationSuccessMock = vi.mocked(notification.success);
+const notificationErrorMock = vi.mocked(notification.error);
 
 beforeEach(() => {
   createEmployeeMock.mockReset();
   fetchEmployeeFiltersMock.mockReset();
   fetchCurrencyConfigMock.mockReset();
   notificationSuccessMock.mockReset();
+  notificationErrorMock.mockReset();
   fetchEmployeeFiltersMock.mockResolvedValue({ departments: ["Engineering"], countries: ["India"] });
   fetchCurrencyConfigMock.mockResolvedValue({
     currencies: ["USD", "INR"],
@@ -110,6 +112,25 @@ describe("CreateEmployeeModal", () => {
         }),
       );
     });
+  });
+
+  it("shows a generic error notification when the mutation fails with a non-field error", async () => {
+    createEmployeeMock.mockRejectedValue(new Error("Network error"));
+    const handleClose = vi.fn();
+    const user = userEvent.setup();
+    renderWithProviders(<CreateEmployeeModal open onClose={handleClose} />);
+
+    await fillMinimalValidForm(user);
+    await user.click(screen.getByRole("button", { name: /create employee/i }));
+
+    await waitFor(() => {
+      expect(notificationErrorMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining("Couldn't create employee"),
+        }),
+      );
+    });
+    expect(handleClose).not.toHaveBeenCalled();
   });
 
   it("calls onClose when the modal's close (X) button is clicked", async () => {

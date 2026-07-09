@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { notification } from "antd";
 import { EditEmployeeModal } from "../src/components/EditEmployeeModal";
 import { renderWithProviders } from "./testUtils";
 import {
@@ -22,11 +23,19 @@ vi.mock("../src/api/employees", async (importOriginal) => {
   };
 });
 vi.mock("../src/api/config", () => ({ fetchCurrencyConfig: vi.fn() }));
+vi.mock("antd", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("antd")>();
+  return {
+    ...actual,
+    notification: { ...actual.notification, success: vi.fn(), error: vi.fn() },
+  };
+});
 
 const updateEmployeeMock = vi.mocked(updateEmployee);
 const fetchEmployeeFiltersMock = vi.mocked(fetchEmployeeFilters);
 const fetchEmployeesMock = vi.mocked(fetchEmployees);
 const fetchCurrencyConfigMock = vi.mocked(fetchCurrencyConfig);
+const notificationErrorMock = vi.mocked(notification.error);
 
 const employee = {
   id: 1,
@@ -44,6 +53,7 @@ beforeEach(() => {
   fetchEmployeeFiltersMock.mockReset();
   fetchCurrencyConfigMock.mockReset();
   fetchEmployeesMock.mockClear();
+  notificationErrorMock.mockReset();
   fetchEmployeeFiltersMock.mockResolvedValue({
     departments: ["Engineering", "Finance"],
     countries: ["United Kingdom", "Germany"],
@@ -104,5 +114,26 @@ describe("EditEmployeeModal", () => {
     await user.click(screen.getByRole("button", { name: /save changes/i }));
 
     expect(await screen.findByText("Salary amount must be greater than zero")).toBeInTheDocument();
+  });
+
+  it("shows a generic error notification when the mutation fails with a non-field error", async () => {
+    updateEmployeeMock.mockRejectedValue(new Error("Network error"));
+    const handleClose = vi.fn();
+    const user = userEvent.setup();
+    renderWithProviders(<EditEmployeeModal employee={employee} onClose={handleClose} />);
+
+    await screen.findByDisplayValue("Ada Lovelace");
+    await user.click(screen.getByLabelText("Department"));
+    await user.click(await screen.findByRole("option", { name: "Finance" }));
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    await waitFor(() => {
+      expect(notificationErrorMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining("Couldn't update employee"),
+        }),
+      );
+    });
+    expect(handleClose).not.toHaveBeenCalled();
   });
 });
