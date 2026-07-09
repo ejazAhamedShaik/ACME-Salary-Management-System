@@ -38,7 +38,7 @@ describe("AppLayout navigation", () => {
     const user = userEvent.setup();
     renderWithProviders(<App />);
 
-    await user.click(screen.getByRole("menuitem", { name: "Insights" }));
+    await user.click(screen.getByRole("link", { name: "Insights" }));
 
     expect(await screen.findByTestId("insights-page")).toBeInTheDocument();
     expect(screen.queryByPlaceholderText("Search by name or employee code")).not.toBeInTheDocument();
