@@ -797,3 +797,7 @@ extend create/update/delete mutations to invalidate insights queries`,
   it into the feature commit it was noticed in.
 
 > [human note: ]
+> Added a navigation bar with Insights menu item. This navigate user to next screen where summary and outlier insights are shown. 
+> When mutations like create/edit/delete actions happen then current state of insights is invalidated and recomputed from BE. This is to make sure that no stale data is shown in the insights page. 
+> When there is not employee data (edge case) then empty state in the insights page will be shown. 
+
